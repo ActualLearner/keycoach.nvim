@@ -1,0 +1,41 @@
+name: Bug report
+description: Report incorrect behavior or a misleading recommendation
+title: "[Bug]: "
+labels: [needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not include source code, typed commands, paths, or other private
+        editor content. KeyCoach diagnostics should be content-free.
+  - type: input
+    id: version
+    attributes:
+      label: KeyCoach version or commit
+    validations:
+      required: true
+  - type: input
+    id: neovim
+    attributes:
+      label: Neovim version
+      placeholder: Output of `nvim --version | head -n 1`
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe the behavior without editor content or private paths.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Relevant setup
+      description: Distribution, plugin manager, and mapping plugins involved.

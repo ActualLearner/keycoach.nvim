@@ -1,0 +1,6 @@
+/.test-data/
+/.tmp/
+*.log
+*.swp
+*.swo
+.DS_Store

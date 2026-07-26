@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a workflow pattern, editor adapter, or product improvement
+title: "[Feature]: "
+labels: [needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Workflow problem
+      description: What repeated editor behavior should KeyCoach help with?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Observable evidence
+      description: What content-free actions would demonstrate this pattern?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Useful outcome
+      description: What existing action or generated mapping should be considered?
+    validations:
+      required: true
