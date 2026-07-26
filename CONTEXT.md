@@ -18,7 +18,9 @@ _Avoid_: Keystroke log, telemetry event
 
 **Session**:
 A period of editor activity used to distinguish a recurring habit from a
-one-off action.
+one-off action. In the Neovim adapter, a Session begins at plugin startup and
+rolls over after a 30-minute gap with no Observations; Session numbers are
+allocated from the checkpoint and strictly increase.
 _Avoid_: Recording
 
 **Workflow Pattern**:
