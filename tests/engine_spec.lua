@@ -475,4 +475,206 @@ describe("recommendation engine", function()
     eq(6, recommendation.evidence.occurrences)
     eq(3, recommendation.evidence.sessions)
   end)
+
+  local function later_actions(action_id, sessions, per_session, base_ms, source, lhs)
+    local observations = {}
+    local index = 0
+    for _, session in ipairs(sessions) do
+      for ordinal = 1, per_session do
+        index = index + 1
+        observations[index] = {
+          id = string.format("%d:%d", session, ordinal),
+          session = session,
+          ordinal = ordinal,
+          at_ms = base_ms + index * 100,
+          kind = "action",
+          action_id = action_id,
+          mode = "n",
+          source = source or "command",
+          bindable = true,
+          cost = 5,
+          lhs = lhs,
+          context = {
+            filetype = "lua",
+            buffer_kind = "file",
+            plugin_context = "",
+          },
+        }
+      end
+    end
+    return observations
+  end
+
+  local function feedback_item(kind, pattern_id, at_ms, lhs)
+    return {
+      id = string.format("feedback:%s:%d", kind, at_ms),
+      at_ms = at_ms,
+      kind = kind,
+      pattern_id = pattern_id,
+      lhs = lhs,
+    }
+  end
+
+  local function triggered_transition()
+    local engine = require("keycoach.engine")
+    local transition = engine.advance(nil, analysis_cycle(2000, repeated_actions("workspace.find_files")))
+    return engine, transition, transition.recommendations[1]
+  end
+
+  it("suppresses a snoozed Workflow Pattern until time and stronger evidence return", function()
+    local engine, transition, recommendation = triggered_transition()
+    local pattern = recommendation.pattern_id
+
+    local snoozed = engine.advance(transition.checkpoint, {
+      now_ms = 3000,
+      observations = {},
+      feedback = { feedback_item("snoozed", pattern, 3000) },
+      inventory = empty_inventory(),
+    })
+    eq({}, snoozed.recommendations)
+
+    -- 31 days later with only a little new recurrence: still silent.
+    local month_ms = 31 * 86400000
+    local weak = engine.advance(snoozed.checkpoint, {
+      now_ms = 3000 + month_ms,
+      observations = later_actions("workspace.find_files", { 4 }, 4, 3000 + month_ms - 1000),
+      feedback = {},
+      inventory = empty_inventory(),
+    })
+    eq({}, weak.recommendations)
+
+    -- Recurrence since the Snooze now exceeds the original evidence.
+    local strong = engine.advance(weak.checkpoint, {
+      now_ms = 5000 + month_ms,
+      observations = later_actions("workspace.find_files", { 5, 6 }, 4, 4000 + month_ms),
+      feedback = {},
+      inventory = empty_inventory(),
+    })
+    eq(1, #strong.recommendations)
+    eq(pattern, strong.recommendations[1].pattern_id)
+  end)
+
+  it("excludes a Workflow Pattern permanently and restores it on request", function()
+    local engine, transition, recommendation = triggered_transition()
+    local pattern = recommendation.pattern_id
+
+    local excluded = engine.advance(transition.checkpoint, {
+      now_ms = 3000,
+      observations = {},
+      feedback = { feedback_item("excluded", pattern, 3000) },
+      inventory = empty_inventory(),
+    })
+    eq({}, excluded.recommendations)
+    eq({ { pattern_id = pattern } }, excluded.exclusions)
+
+    local restored = engine.advance(excluded.checkpoint, {
+      now_ms = 4000,
+      observations = {},
+      feedback = { feedback_item("restored", pattern, 4000) },
+      inventory = empty_inventory(),
+    })
+    eq({}, restored.exclusions)
+    eq(1, #restored.recommendations)
+    eq(pattern, restored.recommendations[1].pattern_id)
+  end)
+
+  it("never re-proposes a key rejected for the same Workflow Pattern", function()
+    local engine, transition, recommendation = triggered_transition()
+    local pattern = recommendation.pattern_id
+    local first_key = recommendation.mapping.lhs
+
+    local regenerated = engine.advance(transition.checkpoint, {
+      now_ms = 3000,
+      observations = {},
+      feedback = { feedback_item("rejected_key", pattern, 3000, first_key) },
+      inventory = empty_inventory(),
+    })
+    eq(1, #regenerated.recommendations)
+    local replacement = regenerated.recommendations[1].mapping.lhs
+    eq(pattern, regenerated.recommendations[1].pattern_id)
+    eq(true, replacement ~= first_key)
+  end)
+
+  it("retires an accepted Recommendation once later Sessions adopt the mapping", function()
+    local engine, transition, recommendation = triggered_transition()
+    local pattern = recommendation.pattern_id
+    local accepted_key = recommendation.mapping.lhs
+
+    local accepted = engine.advance(transition.checkpoint, {
+      now_ms = 3000,
+      observations = {},
+      feedback = { feedback_item("accepted", pattern, 3000, accepted_key) },
+      inventory = empty_inventory(),
+    })
+    eq({}, accepted.recommendations)
+    eq({}, accepted.adoptions)
+
+    local adopted = engine.advance(accepted.checkpoint, {
+      now_ms = 6000,
+      observations = later_actions("workspace.find_files", { 4, 5 }, 1, 4000, "mapping", accepted_key),
+      feedback = {},
+      inventory = empty_inventory(),
+    })
+    eq({ { pattern_id = pattern, lhs = accepted_key } }, adopted.adoptions)
+    eq({}, adopted.recommendations)
+
+    -- Adoption is recorded once, then stays retired.
+    local settled = engine.advance(adopted.checkpoint, {
+      now_ms = 7000,
+      observations = {},
+      feedback = {},
+      inventory = empty_inventory(),
+    })
+    eq({}, settled.adoptions)
+    eq({}, settled.recommendations)
+  end)
+
+  it("expires detailed Observations after the retention window", function()
+    local engine, transition = triggered_transition()
+    eq(10, #transition.checkpoint.details)
+
+    local month_ms = 31 * 86400000
+    local pruned = engine.advance(transition.checkpoint, {
+      now_ms = 2000 + month_ms,
+      observations = later_actions("workspace.find_files", { 4 }, 2, 1000 + month_ms),
+      feedback = {},
+      inventory = empty_inventory(),
+    })
+    eq(2, #pruned.checkpoint.details)
+    -- Compact aggregate evidence remains.
+    local aggregate_occurrences = 0
+    for _, aggregate in pairs(pruned.checkpoint.actions) do
+      aggregate_occurrences = aggregate_occurrences + aggregate.occurrences
+    end
+    eq(12, aggregate_occurrences)
+  end)
+
+  it("applies feedback idempotently and rejects id reuse for different data", function()
+    local engine, transition, recommendation = triggered_transition()
+    local pattern = recommendation.pattern_id
+    local item = feedback_item("excluded", pattern, 3000)
+
+    local first = engine.advance(transition.checkpoint, {
+      now_ms = 3000,
+      observations = {},
+      feedback = { item, item },
+      inventory = empty_inventory(),
+    })
+    eq(1, #first.exclusions)
+
+    local reused = {
+      id = item.id,
+      at_ms = 3000,
+      kind = "snoozed",
+      pattern_id = pattern,
+    }
+    local retried, problem = engine.advance(first.checkpoint, {
+      now_ms = 4000,
+      observations = {},
+      feedback = { reused },
+      inventory = empty_inventory(),
+    })
+    eq(nil, retried)
+    eq("id_collision", problem.code)
+  end)
 end)
