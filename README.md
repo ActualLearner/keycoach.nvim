@@ -167,6 +167,8 @@ shapes so later editor adapters can reproduce its behavior.
   capture boundary, and V1 scope
 - [Recommendation engine design](docs/design/recommendation-engine.md) —
   engine interface, reliability rationale, and invariants
+- [QA checklist](docs/qa-checklist.md) — the "done enough" bar for the
+  v1.0.0 release
 - [Architecture decision records](docs/adr/) — why observation is local-only,
   why Neovim comes first, why config writes are append-only, and why the
   engine is one atomic call
