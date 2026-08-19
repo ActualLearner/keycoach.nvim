@@ -28,7 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: JohnnyMorganz/stylua-action@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --check .
+      - name: Install stylua 2.0.2
+        run: |
+          curl -sL -o /tmp/stylua.zip \
+            https://github.com/JohnnyMorganz/StyLua/releases/download/v2.0.2/stylua-linux-x86_64.zip
+          unzip -o /tmp/stylua.zip -d /usr/local/bin
+      - run: make lint
