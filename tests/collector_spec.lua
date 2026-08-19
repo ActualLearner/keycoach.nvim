@@ -330,6 +330,44 @@ h.describe("Neovim collector", function()
     end
   end)
 
+  h.it("records canonical names for bang and alternate commands and ignores ranges", function()
+    local cases = {
+      { line = "w!", expect = "command:w" },
+      { line = "e#", expect = "command:e" },
+      { line = "%s/foo/bar/g", expect = nil },
+      { line = "'<,'>d", expect = nil },
+      { line = "1,5d", expect = nil },
+      { line = ".d", expect = nil },
+    }
+
+    for _, case in ipairs(cases) do
+      local hooks = fake_hooks()
+      hooks.cmdline_value = {
+        cmdtype = ":",
+        abort = false,
+        line = case.line,
+      }
+      local emitted = {}
+      local handle = collector.start({
+        session = 15,
+        emit = function(observation)
+          table.insert(emitted, observation)
+        end,
+      }, hooks)
+
+      hooks.autocmds.CmdlineLeave()
+
+      if case.expect then
+        h.eq(1, #emitted, case.line .. " must record one command identity")
+        h.eq(case.expect, emitted[1].action_id, case.line)
+        h.eq(nil, emitted[1].lhs, case.line)
+      else
+        h.eq(0, #emitted, case.line .. " must not record an Observation")
+      end
+      handle.stop()
+    end
+  end)
+
   h.it("stops observing commands when the collector is stopped", function()
     local hooks = fake_hooks()
     local emitted = {}

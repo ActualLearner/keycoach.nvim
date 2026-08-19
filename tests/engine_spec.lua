@@ -417,6 +417,35 @@ describe("recommendation engine", function()
     eq(false, recommendation.mapping.lhs == "<leader>e")
   end)
 
+  it("stays silent for a few mistyped commands below the evidence thresholds", function()
+    local engine = require("keycoach.engine")
+
+    local observations = {}
+    for ordinal = 1, 2 do
+      observations[ordinal] = {
+        id = string.format("1:%d", ordinal),
+        session = 1,
+        ordinal = ordinal,
+        at_ms = ordinal * 100,
+        kind = "action",
+        action_id = "command:Telescoop",
+        mode = "n",
+        source = "command",
+        bindable = true,
+        cost = 9,
+        context = {
+          filetype = "lua",
+          buffer_kind = "file",
+          plugin_context = "",
+        },
+      }
+    end
+
+    local transition, problem = engine.advance(nil, analysis_cycle(1000, observations))
+    eq(nil, problem)
+    eq({}, transition.recommendations)
+  end)
+
   it("proposes a conflict-free Mapping Candidate for a frequent unmapped action", function()
     local engine = require("keycoach.engine")
 
