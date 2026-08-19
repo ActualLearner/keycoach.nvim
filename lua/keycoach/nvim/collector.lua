@@ -146,6 +146,9 @@ function M.start(options, hooks)
   assert(type(options.emit) == "function", "collector emit must be a function")
 
   hooks = hooks or neovim_hooks()
+  if type(options.now_ms) == "function" then
+    hooks.now_ms = options.now_ms
+  end
 
   local active = true
   local ordinal = 0
