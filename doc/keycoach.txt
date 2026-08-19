@@ -88,7 +88,7 @@ observes nothing and shows a single setup hint after startup. Passing
 enabled = false disables tracking and skips that hint entirely.
 
 Passing enabled = true to setup() is equivalent explicit consent and skips
-the walkthrough. Without consent KeyCoach stays fully inert.
+the walkthrough. Without consent KeyCoach observes nothing.
 
 After setup, tracking starts immediately. Open the dashboard any time with
 :KeyCoach (see |keycoach-dashboard|).
@@ -159,7 +159,7 @@ Applying a mapping candidate rechecks the live mapping inventory before
 writing. Accepted mappings are appended as readable vim.keymap.set(...)
 statements; KeyCoach never rewrites or removes existing configuration.
 After the first apply, activate the file by requiring it from your config
-(see |keycoach-setup|).
+(see |keycoach-installation|).
 
 An accepted recommendation leaves the list. Later sessions determine
 adoption: once the mapping shows up in normal work across enough sessions,
