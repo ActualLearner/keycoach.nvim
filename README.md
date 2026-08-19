@@ -100,7 +100,8 @@ Passing `enabled = true` in `setup()` is also explicit consent.
 | `:KeyCoachResume` | Resume observation |
 | `:KeyCoachStatus` | Show tracking and recommendation status |
 | `:KeyCoachMappings` | Open the selected mappings file |
-| `:KeyCoachClear` | Delete locally stored observations and preferences |
+| `:KeyCoachData` | Inspect, export, or manage local data |
+| `:KeyCoachClear` | Delete locally stored observations (keeps consent) |
 
 The dashboard is pull-first: KeyCoach does not interrupt active editing with
 recommendation popups.
