@@ -14,15 +14,15 @@ several sessions.
 
 CONTENTS                                        *keycoach-contents*
 
-  1. Installation............|keycoach-installation|
-  2. Setup and first run....|keycoach-setup|
-  3. Commands...............|keycoach-commands|
-  4. Dashboard..............|keycoach-dashboard|
-  5. Statusline.............|keycoach-statusline|
+  1. Installation..................|keycoach-installation|
+  2. Setup and first run..........|keycoach-setup|
+  3. Commands.....................|keycoach-commands|
+  4. Dashboard....................|keycoach-dashboard|
+  5. Statusline...................|keycoach-statusline|
   6. Privacy and capture boundary.|keycoach-privacy|
-  7. Data management........|keycoach-data|
-  8. Configuration..........|keycoach-configuration|
-  9. Development............|keycoach-development|
+  7. Data management..............|keycoach-data|
+  8. Configuration................|keycoach-configuration|
+  9. Development..................|keycoach-development|
 
 ==============================================================================
 1. Installation                                  *keycoach-installation*
@@ -73,7 +73,7 @@ works before the first mapping has been added: >
 2. Setup and first run                              *keycoach-setup*
 
 On the first run, before any observation starts, KeyCoach walks through
-three steps in a single floating window:
+three steps in a sequence of floating windows:
 
   1. The capture boundary is explained (see |keycoach-privacy|).
   2. You choose the Lua mappings file accepted candidates may be appended
@@ -81,9 +81,11 @@ three steps in a single floating window:
   3. You give explicit consent to begin tracking.
 
 Nothing is persisted until the final consent. An abandoned walkthrough
-restarts cleanly from step 1. The walkthrough runs only when you invoke
-:KeyCoach or :KeyCoachEnable while consent is missing; otherwise KeyCoach
-stays inert apart from a single setup hint after startup.
+restarts cleanly from step 1. The walkthrough runs only while KeyCoach is
+in the pending setup state, which happens when setup() runs without
+enabled = true and no consent record exists yet. While pending, KeyCoach
+observes nothing and shows a single setup hint after startup. Passing
+enabled = false disables tracking and skips that hint entirely.
 
 Passing enabled = true to setup() is equivalent explicit consent and skips
 the walkthrough. Without consent KeyCoach stays fully inert.
@@ -158,6 +160,12 @@ writing. Accepted mappings are appended as readable vim.keymap.set(...)
 statements; KeyCoach never rewrites or removes existing configuration.
 After the first apply, activate the file by requiring it from your config
 (see |keycoach-setup|).
+
+An accepted recommendation leaves the list. Later sessions determine
+adoption: once the mapping shows up in normal work across enough sessions,
+the workflow pattern retires for good; if the original long way keeps
+recurring instead, the recommendation becomes available again rather than
+nagging you.
 
 ==============================================================================
 5. Statusline                                       *keycoach-statusline*

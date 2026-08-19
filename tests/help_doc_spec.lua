@@ -10,6 +10,14 @@ local function read_doc()
   return contents
 end
 
+local function lines(contents)
+  local result = {}
+  for line in contents:gmatch("[^\n]+") do
+    result[#result + 1] = line
+  end
+  return result
+end
+
 local function tags_from_tags_file(dir)
   local file = io.open(dir .. "/tags", "rb")
   if not file then
@@ -18,7 +26,7 @@ local function tags_from_tags_file(dir)
   local contents = assert(file:read("*a"))
   assert(file:close())
   local tags = {}
-  for line in contents:gmatch("[^\n]+") do
+  for _, line in ipairs(lines(contents)) do
     local tag = line:match("^([^\t]+)\t")
     if tag then
       tags[#tags + 1] = tag
@@ -37,7 +45,7 @@ end
 
 local function defined_tags(contents)
   local tags = {}
-  for line in contents:gmatch("[^\n]+") do
+  for _, line in ipairs(lines(contents)) do
     for tag in line:gmatch("%*([^%*]+)%*") do
       tags[#tags + 1] = tag
     end
