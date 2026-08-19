@@ -263,17 +263,16 @@ describe("recommendation engine", function()
     local first, first_problem = engine.advance(nil, analysis_cycle(1000, { observation }))
 
     eq(nil, first_problem)
-    local retried, retry_problem = engine.advance(first.checkpoint, analysis_cycle(1000, { observation }))
+    local retried, retry_problem =
+      engine.advance(first.checkpoint, analysis_cycle(1000, { observation }))
     eq(nil, retry_problem)
     eq(first.checkpoint, retried.checkpoint)
 
     local collision = vim.deepcopy(observation)
     collision.action_id = "workspace.other_action"
     collision.at_ms = 1100
-    local collision_transition, collision_problem = engine.advance(
-      first.checkpoint,
-      analysis_cycle(1200, { collision })
-    )
+    local collision_transition, collision_problem =
+      engine.advance(first.checkpoint, analysis_cycle(1200, { collision }))
     eq(nil, collision_transition)
     eq("id_collision", collision_problem.code)
     eq("cycle.observations[1].id", collision_problem.path)
@@ -281,10 +280,8 @@ describe("recommendation engine", function()
     local out_of_order = vim.deepcopy(observation)
     out_of_order.id = "1:other"
     out_of_order.at_ms = 1100
-    local order_transition, order_problem = engine.advance(
-      first.checkpoint,
-      analysis_cycle(1200, { out_of_order })
-    )
+    local order_transition, order_problem =
+      engine.advance(first.checkpoint, analysis_cycle(1200, { out_of_order }))
     eq(nil, order_transition)
     eq("observation_order", order_problem.code)
     eq("cycle.observations[1].ordinal", order_problem.path)
@@ -298,10 +295,8 @@ describe("recommendation engine", function()
     future.id = "1:2"
     future.ordinal = 2
     future.at_ms = 1300
-    local future_transition, future_problem = engine.advance(
-      first.checkpoint,
-      analysis_cycle(1200, { future })
-    )
+    local future_transition, future_problem =
+      engine.advance(first.checkpoint, analysis_cycle(1200, { future }))
     eq(nil, future_transition)
     eq("time_regression", future_problem.code)
     eq("cycle.observations[1].at_ms", future_problem.path)
@@ -310,10 +305,8 @@ describe("recommendation engine", function()
     late.id = "2:1"
     late.session = 2
     late.at_ms = 999
-    local late_transition, late_problem = engine.advance(
-      first.checkpoint,
-      analysis_cycle(1200, { late })
-    )
+    local late_transition, late_problem =
+      engine.advance(first.checkpoint, analysis_cycle(1200, { late }))
     eq(nil, late_transition)
     eq("time_regression", late_problem.code)
     eq("cycle.observations[1].at_ms", late_problem.path)
@@ -517,7 +510,8 @@ describe("recommendation engine", function()
 
   local function triggered_transition()
     local engine = require("keycoach.engine")
-    local transition = engine.advance(nil, analysis_cycle(2000, repeated_actions("workspace.find_files")))
+    local transition =
+      engine.advance(nil, analysis_cycle(2000, repeated_actions("workspace.find_files")))
     return engine, transition, transition.recommendations[1]
   end
 
@@ -611,7 +605,14 @@ describe("recommendation engine", function()
 
     local adopted = engine.advance(accepted.checkpoint, {
       now_ms = 6000,
-      observations = later_actions("workspace.find_files", { 4, 5 }, 1, 4000, "mapping", accepted_key),
+      observations = later_actions(
+        "workspace.find_files",
+        { 4, 5 },
+        1,
+        4000,
+        "mapping",
+        accepted_key
+      ),
       feedback = {},
       inventory = empty_inventory(),
     })

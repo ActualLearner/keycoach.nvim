@@ -1,4 +1,4 @@
-.PHONY: test check
+.PHONY: test check lint
 
 test:
 	nvim --headless -u NONE -l tests/run.lua
@@ -8,3 +8,6 @@ check: test
 		-c "set runtimepath^=." \
 		-c "lua require('keycoach')" \
 		-c "qa!"
+
+lint:
+	stylua --check .

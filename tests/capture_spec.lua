@@ -17,19 +17,22 @@ end
 
 h.describe("Neovim observation capture", function()
   h.it("keeps an exact Normal-mode key and only safe editor context", function()
-    local observation = capture.observe({
-      kind = "key",
-      key = "j",
-      session_id = 4,
-      ordinal = 9,
-      text = "must not escape",
-      path = "/private/project/main.lua",
-    }, environment({
-      mode = "n",
-      filetype = "lua",
-      buffer_kind = "file",
-      plugin_context = "telescope",
-    }))
+    local observation = capture.observe(
+      {
+        kind = "key",
+        key = "j",
+        session_id = 4,
+        ordinal = 9,
+        text = "must not escape",
+        path = "/private/project/main.lua",
+      },
+      environment({
+        mode = "n",
+        filetype = "lua",
+        buffer_kind = "file",
+        plugin_context = "telescope",
+      })
+    )
 
     h.eq({
       schema_version = 1,
@@ -99,17 +102,20 @@ h.describe("Neovim observation capture", function()
     local actual = {}
 
     for index, case in ipairs(cases) do
-      local observation = capture.observe({
-        kind = "key",
-        key = "w",
-        session_id = 6,
-        ordinal = index,
-      }, environment({
-        mode = case.raw,
-        filetype = "lua",
-        buffer_kind = "file",
-        plugin_context = "none",
-      }))
+      local observation = capture.observe(
+        {
+          kind = "key",
+          key = "w",
+          session_id = 6,
+          ordinal = index,
+        },
+        environment({
+          mode = case.raw,
+          filetype = "lua",
+          buffer_kind = "file",
+          plugin_context = "none",
+        })
+      )
       actual[index] = {
         mode = observation.mode,
         action_id = observation.action_id,
@@ -209,24 +215,27 @@ h.describe("Neovim observation capture", function()
   end)
 
   h.it("keeps a bindable action identity but discards command arguments", function()
-    local observation = capture.observe({
-      kind = "action",
-      action_id = "command:Telescope.find_files",
-      source = "command",
-      category = "command",
-      bindable = true,
-      cost = 7,
-      lhs = "<leader>ff",
-      arguments = { "/private/project" },
-      rhs = "Telescope find_files cwd=/private/project",
-      session_id = 9,
-      ordinal = 2,
-    }, environment({
-      mode = "n",
-      filetype = "lua",
-      buffer_kind = "file",
-      plugin_context = "telescope",
-    }))
+    local observation = capture.observe(
+      {
+        kind = "action",
+        action_id = "command:Telescope.find_files",
+        source = "command",
+        category = "command",
+        bindable = true,
+        cost = 7,
+        lhs = "<leader>ff",
+        arguments = { "/private/project" },
+        rhs = "Telescope find_files cwd=/private/project",
+        session_id = 9,
+        ordinal = 2,
+      },
+      environment({
+        mode = "n",
+        filetype = "lua",
+        buffer_kind = "file",
+        plugin_context = "telescope",
+      })
+    )
 
     h.eq({
       schema_version = 1,
@@ -257,18 +266,21 @@ h.describe("Neovim observation capture", function()
     local actual = {}
 
     for index, case in ipairs(cases) do
-      local observation = capture.observe({
-        kind = "editor",
-        action = "undo",
-        bindable = true,
-        session_id = 10,
-        ordinal = index,
-      }, environment({
-        mode = case.raw_mode,
-        filetype = "lua",
-        buffer_kind = "file",
-        plugin_context = "none",
-      }))
+      local observation = capture.observe(
+        {
+          kind = "editor",
+          action = "undo",
+          bindable = true,
+          session_id = 10,
+          ordinal = index,
+        },
+        environment({
+          mode = case.raw_mode,
+          filetype = "lua",
+          buffer_kind = "file",
+          plugin_context = "none",
+        })
+      )
       actual[index] = {
         action_id = observation.action_id,
         source = observation.source,
@@ -284,17 +296,20 @@ h.describe("Neovim observation capture", function()
   end)
 
   h.it("rejects multi-key chunks and unsafe context labels", function()
-    local observation = capture.observe({
-      kind = "key",
-      key = "pasted secret",
-      session_id = 11,
-      ordinal = 3,
-    }, environment({
-      mode = "n",
-      filetype = "lua /private/file",
-      buffer_kind = "/private/buffer",
-      plugin_context = "plugin private project",
-    }))
+    local observation = capture.observe(
+      {
+        kind = "key",
+        key = "pasted secret",
+        session_id = 11,
+        ordinal = 3,
+      },
+      environment({
+        mode = "n",
+        filetype = "lua /private/file",
+        buffer_kind = "/private/buffer",
+        plugin_context = "plugin private project",
+      })
+    )
 
     h.eq({
       schema_version = 1,
@@ -329,8 +344,14 @@ h.describe("Neovim observation capture", function()
     end
 
     local actual = {
-      capture.observe({ kind = "key", key = "j", session_id = 0, ordinal = 1 }, environment(context)),
-      capture.observe({ kind = "key", key = "j", session_id = 1, ordinal = 1.5 }, environment(context)),
+      capture.observe(
+        { kind = "key", key = "j", session_id = 0, ordinal = 1 },
+        environment(context)
+      ),
+      capture.observe(
+        { kind = "key", key = "j", session_id = 1, ordinal = 1.5 },
+        environment(context)
+      ),
       capture.observe({ kind = "key", key = "j", session_id = 1, ordinal = 1 }, invalid_time),
     }
 

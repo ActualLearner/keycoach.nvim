@@ -39,7 +39,8 @@ local function atomic_write(path, contents)
   local closed, close_message = file:close()
   if not wrote or not closed then
     remove_quietly(temporary)
-    return nil, problem("write_failed", write_message or close_message or "could not write checkpoint", path)
+    return nil,
+      problem("write_failed", write_message or close_message or "could not write checkpoint", path)
   end
 
   local renamed, rename_message = uv.fs_rename(temporary, path)
@@ -85,7 +86,8 @@ function M.load(path)
     return nil, problem("invalid_json", checkpoint, path)
   end
   if type(checkpoint) ~= "table" then
-    return nil, problem("invalid_checkpoint", "stored checkpoint must be a JSON-compatible table", path)
+    return nil,
+      problem("invalid_checkpoint", "stored checkpoint must be a JSON-compatible table", path)
   end
 
   return checkpoint, nil

@@ -142,7 +142,10 @@ end
 
 function M.start(options, hooks)
   options = options or {}
-  assert(safe_positive_integer(options.session), "collector session must be a positive safe integer")
+  assert(
+    safe_positive_integer(options.session),
+    "collector session must be a positive safe integer"
+  )
   assert(type(options.emit) == "function", "collector emit must be a function")
 
   hooks = hooks or neovim_hooks()

@@ -22,4 +22,13 @@ jobs:
         with:
           version: ${{ matrix.neovim }}
           neovim: true
-      - run: make test
+      - run: make check
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --check .

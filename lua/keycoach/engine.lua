@@ -169,7 +169,11 @@ local function validate_context(context, path)
   end
   for _, field in ipairs({ "filetype", "buffer_kind", "plugin_context" }) do
     if type(context[field]) ~= "string" then
-      return problem("invalid_observation", "Observation context field must be a string", path .. "." .. field)
+      return problem(
+        "invalid_observation",
+        "Observation context field must be a string",
+        path .. "." .. field
+      )
     end
   end
   return nil
@@ -177,25 +181,42 @@ end
 
 local function validate_observation(observation, index)
   local path = string.format("cycle.observations[%d]", index)
-  local observation_problem = validate_closed(observation, OBSERVATION_FIELDS, "invalid_observation", path)
+  local observation_problem =
+    validate_closed(observation, OBSERVATION_FIELDS, "invalid_observation", path)
   if observation_problem then
     return observation_problem
   end
 
   if observation.schema_version ~= nil and observation.schema_version ~= 1 then
-    return problem("invalid_observation", "Unsupported Observation schema version", path .. ".schema_version")
+    return problem(
+      "invalid_observation",
+      "Unsupported Observation schema version",
+      path .. ".schema_version"
+    )
   end
   if not is_non_empty_string(observation.id) then
     return problem("invalid_observation", "Observation id is required", path .. ".id")
   end
   if not is_integer(observation.session) or observation.session < 1 then
-    return problem("invalid_observation", "Observation Session must be a positive integer", path .. ".session")
+    return problem(
+      "invalid_observation",
+      "Observation Session must be a positive integer",
+      path .. ".session"
+    )
   end
   if not is_integer(observation.ordinal) or observation.ordinal < 1 then
-    return problem("invalid_observation", "Observation ordinal must be a positive integer", path .. ".ordinal")
+    return problem(
+      "invalid_observation",
+      "Observation ordinal must be a positive integer",
+      path .. ".ordinal"
+    )
   end
   if not is_integer(observation.at_ms) or observation.at_ms < 0 then
-    return problem("invalid_observation", "Observation time must be a non-negative integer", path .. ".at_ms")
+    return problem(
+      "invalid_observation",
+      "Observation time must be a non-negative integer",
+      path .. ".at_ms"
+    )
   end
   if observation.kind ~= "action" then
     return problem("invalid_observation", "Observation kind must be action", path .. ".kind")
@@ -210,27 +231,48 @@ local function validate_observation(observation, index)
     return problem("invalid_observation", "Observation source is required", path .. ".source")
   end
   if type(observation.bindable) ~= "boolean" then
-    return problem("invalid_observation", "Observation bindable must be boolean", path .. ".bindable")
+    return problem(
+      "invalid_observation",
+      "Observation bindable must be boolean",
+      path .. ".bindable"
+    )
   end
   if not is_integer(observation.cost) or observation.cost < 0 then
-    return problem("invalid_observation", "Observation cost must be a non-negative integer", path .. ".cost")
+    return problem(
+      "invalid_observation",
+      "Observation cost must be a non-negative integer",
+      path .. ".cost"
+    )
   end
   if observation.lhs ~= nil and not is_non_empty_string(observation.lhs) then
-    return problem("invalid_observation", "Observation lhs must be a non-empty string", path .. ".lhs")
+    return problem(
+      "invalid_observation",
+      "Observation lhs must be a non-empty string",
+      path .. ".lhs"
+    )
   end
   return validate_context(observation.context, path .. ".context")
 end
 
 local function validate_inventory(inventory)
-  local inventory_problem = validate_closed(inventory, INVENTORY_FIELDS, "invalid_inventory", "cycle.inventory")
+  local inventory_problem =
+    validate_closed(inventory, INVENTORY_FIELDS, "invalid_inventory", "cycle.inventory")
   if inventory_problem then
     return inventory_problem
   end
   if not is_non_empty_string(inventory.revision) then
-    return problem("invalid_inventory", "Inventory revision is required", "cycle.inventory.revision")
+    return problem(
+      "invalid_inventory",
+      "Inventory revision is required",
+      "cycle.inventory.revision"
+    )
   end
   if type(inventory.complete) ~= "boolean" then
-    return problem("invalid_inventory", "Inventory completeness must be boolean", "cycle.inventory.complete")
+    return problem(
+      "invalid_inventory",
+      "Inventory completeness must be boolean",
+      "cycle.inventory.complete"
+    )
   end
 
   local conventions_problem = validate_closed(
@@ -269,7 +311,8 @@ local function validate_inventory(inventory)
     end
   end
 
-  local mappings_problem = validate_array(inventory.mappings, "invalid_inventory", "cycle.inventory.mappings")
+  local mappings_problem =
+    validate_array(inventory.mappings, "invalid_inventory", "cycle.inventory.mappings")
   if mappings_problem then
     return mappings_problem
   end
@@ -287,10 +330,15 @@ local function validate_inventory(inventory)
     if mapping.desc ~= nil and type(mapping.desc) ~= "string" then
       return problem("invalid_inventory", "Mapping description must be a string", path .. ".desc")
     end
-    if type(mapping.buffer) ~= "boolean"
+    if
+      type(mapping.buffer) ~= "boolean"
       and (not is_integer(mapping.buffer) or mapping.buffer < 1)
     then
-      return problem("invalid_inventory", "Mapping buffer must be false or a positive integer", path .. ".buffer")
+      return problem(
+        "invalid_inventory",
+        "Mapping buffer must be false or a positive integer",
+        path .. ".buffer"
+      )
     end
   end
   return nil
@@ -306,15 +354,25 @@ local function validate_feedback_item(item, index)
     return problem("invalid_feedback", "Feedback id is required", path .. ".id")
   end
   if not is_integer(item.at_ms) or item.at_ms < 0 then
-    return problem("invalid_feedback", "Feedback time must be a non-negative integer", path .. ".at_ms")
+    return problem(
+      "invalid_feedback",
+      "Feedback time must be a non-negative integer",
+      path .. ".at_ms"
+    )
   end
   if not FEEDBACK_KINDS[item.kind] then
     return problem("invalid_feedback", "Unsupported feedback kind", path .. ".kind")
   end
   if not is_non_empty_string(item.pattern_id) then
-    return problem("invalid_feedback", "Feedback Workflow Pattern is required", path .. ".pattern_id")
+    return problem(
+      "invalid_feedback",
+      "Feedback Workflow Pattern is required",
+      path .. ".pattern_id"
+    )
   end
-  if (item.kind == "accepted" or item.kind == "rejected_key") and not is_non_empty_string(item.lhs) then
+  if
+    (item.kind == "accepted" or item.kind == "rejected_key") and not is_non_empty_string(item.lhs)
+  then
     return problem("invalid_feedback", "Feedback lhs is required for this kind", path .. ".lhs")
   end
   if item.lhs ~= nil and not is_non_empty_string(item.lhs) then
@@ -331,12 +389,18 @@ local function validate_cycle(cycle)
   if not is_integer(cycle.now_ms) or cycle.now_ms < 0 then
     return problem("invalid_cycle", "Cycle time must be a non-negative integer", "cycle.now_ms")
   end
-  if cycle.retention_days ~= nil
+  if
+    cycle.retention_days ~= nil
     and (not is_integer(cycle.retention_days) or cycle.retention_days < 1)
   then
-    return problem("invalid_cycle", "Retention days must be a positive integer", "cycle.retention_days")
+    return problem(
+      "invalid_cycle",
+      "Retention days must be a positive integer",
+      "cycle.retention_days"
+    )
   end
-  local observations_problem = validate_array(cycle.observations, "invalid_cycle", "cycle.observations")
+  local observations_problem =
+    validate_array(cycle.observations, "invalid_cycle", "cycle.observations")
   if observations_problem then
     return observations_problem
   end
@@ -363,7 +427,8 @@ local function validate_checkpoint(checkpoint)
   if checkpoint.version ~= 1 then
     return problem("invalid_checkpoint", "Unsupported checkpoint version", "checkpoint.version")
   end
-  local checkpoint_problem = validate_closed(checkpoint, CHECKPOINT_FIELDS, "invalid_checkpoint", "checkpoint")
+  local checkpoint_problem =
+    validate_closed(checkpoint, CHECKPOINT_FIELDS, "invalid_checkpoint", "checkpoint")
   if checkpoint_problem then
     return checkpoint_problem
   end
@@ -387,7 +452,11 @@ local function validate_checkpoint(checkpoint)
     "accepted",
   }) do
     if type(checkpoint[field]) ~= "table" then
-      return problem("invalid_checkpoint", "Checkpoint field must be a table", "checkpoint." .. field)
+      return problem(
+        "invalid_checkpoint",
+        "Checkpoint field must be a table",
+        "checkpoint." .. field
+      )
     end
   end
   return validate_array(checkpoint.details, "invalid_checkpoint", "checkpoint.details")
@@ -406,9 +475,11 @@ local function copy(value)
 end
 
 local function token(value)
-  return (value:gsub("([^%w%._%-])", function(character)
-    return string.format("%%%02X", string.byte(character))
-  end))
+  return (
+    value:gsub("([^%w%._%-])", function(character)
+      return string.format("%%%02X", string.byte(character))
+    end)
+  )
 end
 
 local function fingerprint_value(value)
@@ -446,11 +517,17 @@ local function context_key(context)
 end
 
 local function action_key(observation)
-  return table.concat({ observation.mode, observation.action_id, context_key(observation.context) }, "|")
+  return table.concat(
+    { observation.mode, observation.action_id, context_key(observation.context) },
+    "|"
+  )
 end
 
 local function sequence_key(first, second)
-  return table.concat({ first.mode, first.action_id, second.action_id, context_key(first.context) }, "|")
+  return table.concat(
+    { first.mode, first.action_id, second.action_id, context_key(first.context) },
+    "|"
+  )
 end
 
 local function native_action_key(observation)
@@ -582,7 +659,8 @@ local function observe_native_action(checkpoint, observation)
   if tail.length == MIN_MOTION_RUN_LENGTH then
     aggregate_native_action(checkpoint, tail, observation)
   elseif tail.length > MIN_MOTION_RUN_LENGTH then
-    checkpoint.native_actions[key].total_cost = checkpoint.native_actions[key].total_cost + observation.cost
+    checkpoint.native_actions[key].total_cost = checkpoint.native_actions[key].total_cost
+      + observation.cost
   end
 end
 
@@ -598,7 +676,8 @@ end
 local function pattern_evidence(checkpoint, target_pattern_id)
   for _, collection in ipairs({ checkpoint.actions, checkpoint.native_actions }) do
     for _, aggregate in pairs(collection) do
-      local id = collection == checkpoint.actions and pattern_id(aggregate) or native_pattern_id(aggregate)
+      local id = collection == checkpoint.actions and pattern_id(aggregate)
+        or native_pattern_id(aggregate)
       if id == target_pattern_id then
         return aggregate.occurrences
       end
@@ -634,13 +713,14 @@ local function apply_feedback(checkpoint, cycle)
         }
         checkpoint.suppressions[item.pattern_id] = nil
       elseif item.kind == "acknowledged" then
-        checkpoint.accepted[item.pattern_id] = checkpoint.accepted[item.pattern_id] or {
-          lhs = item.lhs,
-          at_ms = item.at_ms,
-          adopted = false,
-          sessions_with_mapping = {},
-          sessions_without_mapping = {},
-        }
+        checkpoint.accepted[item.pattern_id] = checkpoint.accepted[item.pattern_id]
+          or {
+            lhs = item.lhs,
+            at_ms = item.at_ms,
+            adopted = false,
+            sessions_with_mapping = {},
+            sessions_without_mapping = {},
+          }
       elseif item.kind == "rejected_key" then
         suppression.rejected_keys = suppression.rejected_keys or {}
         suppression.rejected_keys[item.lhs] = true
@@ -704,7 +784,8 @@ local function suppressed(checkpoint, recommendation, now_ms)
       return true
     end
   end
-  if suppression.rejected_keys
+  if
+    suppression.rejected_keys
     and recommendation.kind == "mapping_candidate"
     and suppression.rejected_keys[recommendation.mapping.lhs]
   then
@@ -852,7 +933,8 @@ local function recommendations_for_actions(checkpoint, inventory)
           },
         })
       elseif aggregate.bindable then
-        local lhs = allocate_candidate(inventory, aggregate, rejected_keys_for(checkpoint, workflow_id))
+        local lhs =
+          allocate_candidate(inventory, aggregate, rejected_keys_for(checkpoint, workflow_id))
         if lhs then
           table.insert(recommendations, {
             id = workflow_id .. ":candidate:" .. token(lhs),
@@ -871,7 +953,10 @@ local function recommendations_for_actions(checkpoint, inventory)
             evidence = {
               occurrences = aggregate.occurrences,
               sessions = sessions,
-              estimated_keystrokes_saved = math.max(0, aggregate.total_cost - aggregate.occurrences),
+              estimated_keystrokes_saved = math.max(
+                0,
+                aggregate.total_cost - aggregate.occurrences
+              ),
             },
           })
         end
@@ -891,7 +976,8 @@ local function recommendations_for_sequences(checkpoint, inventory)
         action_id = "sequence." .. aggregate.actions[1] .. "." .. aggregate.actions[2],
         mode = aggregate.mode,
       }
-      local lhs = allocate_candidate(inventory, allocation_input, rejected_keys_for(checkpoint, workflow_id))
+      local lhs =
+        allocate_candidate(inventory, allocation_input, rejected_keys_for(checkpoint, workflow_id))
       if lhs then
         table.insert(recommendations, {
           id = workflow_id .. ":candidate:" .. token(lhs),
@@ -940,7 +1026,10 @@ local function recommendations_for_native_actions(checkpoint)
         evidence = {
           occurrences = aggregate.occurrences,
           sessions = sessions,
-          estimated_keystrokes_saved = math.max(0, aggregate.total_cost - aggregate.occurrences * 2),
+          estimated_keystrokes_saved = math.max(
+            0,
+            aggregate.total_cost - aggregate.occurrences * 2
+          ),
         },
       })
     end
@@ -1012,26 +1101,39 @@ function M.advance(previous, cycle)
   for index, observation in ipairs(cycle.observations) do
     local path = string.format("cycle.observations[%d]", index)
     if observation.at_ms > cycle.now_ms then
-      return nil, problem("time_regression", "Observation time cannot exceed cycle time", path .. ".at_ms")
+      return nil,
+        problem("time_regression", "Observation time cannot exceed cycle time", path .. ".at_ms")
     end
 
     local fingerprint = observation_fingerprint(observation)
     local seen = checkpoint.seen_observations[observation.id]
     if seen and seen ~= true and seen ~= fingerprint then
-      return nil, problem("id_collision", "Observation id was reused for different data", path .. ".id")
+      return nil,
+        problem("id_collision", "Observation id was reused for different data", path .. ".id")
     end
 
     if not seen then
       if previous and observation.at_ms < previous.last_now_ms then
-        return nil, problem("time_regression", "New Observation time cannot precede the last cycle", path .. ".at_ms")
+        return nil,
+          problem(
+            "time_regression",
+            "New Observation time cannot precede the last cycle",
+            path .. ".at_ms"
+          )
       end
       local session_key = tostring(observation.session)
       local order = checkpoint.session_order[session_key]
       if order and observation.ordinal <= order.ordinal then
-        return nil, problem("observation_order", "Session ordinal must increase", path .. ".ordinal")
+        return nil,
+          problem("observation_order", "Session ordinal must increase", path .. ".ordinal")
       end
       if order and observation.at_ms < order.at_ms then
-        return nil, problem("time_regression", "Observation time cannot regress within a Session", path .. ".at_ms")
+        return nil,
+          problem(
+            "time_regression",
+            "Observation time cannot regress within a Session",
+            path .. ".at_ms"
+          )
       end
 
       checkpoint.seen_observations[observation.id] = fingerprint
@@ -1055,7 +1157,7 @@ function M.advance(previous, cycle)
           total_cost = 0,
           sessions = {},
         }
-      checkpoint.actions[key] = aggregate
+        checkpoint.actions[key] = aggregate
       end
       aggregate.occurrences = aggregate.occurrences + 1
       aggregate.total_cost = aggregate.total_cost + observation.cost
@@ -1082,7 +1184,8 @@ function M.advance(previous, cycle)
       observe_native_action(checkpoint, observation)
 
       local previous_observation = checkpoint.session_tails[session_key]
-      if previous_observation
+      if
+        previous_observation
         and observation.at_ms >= previous_observation.at_ms
         and observation.at_ms - previous_observation.at_ms <= 2000
         and observation.mode == previous_observation.mode
@@ -1120,7 +1223,9 @@ function M.advance(previous, cycle)
 
   local adoptions = {}
   for pattern_key, entry in pairs(checkpoint.accepted) do
-    if not entry.adopted and table_size(entry.sessions_with_mapping or {}) >= MIN_ADOPTION_SESSIONS then
+    if
+      not entry.adopted and table_size(entry.sessions_with_mapping or {}) >= MIN_ADOPTION_SESSIONS
+    then
       entry.adopted = true
       table.insert(adoptions, { pattern_id = pattern_key, lhs = entry.lhs })
     end
@@ -1159,7 +1264,8 @@ function M.advance(previous, cycle)
     exclusions = exclusions,
     adoptions = adoptions,
     notices = {},
-  }, nil
+  },
+    nil
 end
 
 return M

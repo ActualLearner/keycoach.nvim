@@ -189,16 +189,19 @@ h.describe("Neovim collector", function()
     hooks.context_value.mode = "t"
     hooks.key_callback("terminal input", "private-shell-input")
 
-    h.eq({
-      "category:insert_input",
-      "mouse:left_click",
-      "mouse:left_drag",
-      "mouse:scroll_down",
-      "category:command_line_input",
-      "category:terminal_input",
-    }, vim.tbl_map(function(observation)
-      return observation.action_id
-    end, emitted))
+    h.eq(
+      {
+        "category:insert_input",
+        "mouse:left_click",
+        "mouse:left_drag",
+        "mouse:scroll_down",
+        "category:command_line_input",
+        "category:terminal_input",
+      },
+      vim.tbl_map(function(observation)
+        return observation.action_id
+      end, emitted)
+    )
     for _, observation in ipairs(emitted) do
       h.falsy(observation.action_id:find("private", 1, true))
       if observation.source ~= "mouse" then
