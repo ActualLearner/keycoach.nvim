@@ -55,7 +55,7 @@ packer.nvim: >
 vim-plug: >
   Plug 'ActualLearner/keycoach.nvim'
 <
->
+Then set it up in your init.lua: >
   require("keycoach").setup({
     mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
   })

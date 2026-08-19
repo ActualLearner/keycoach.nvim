@@ -93,10 +93,7 @@ h.describe("Vim help doc (doc/keycoach.txt)", function()
     local commands = vim.api.nvim_get_commands({ builtin = false })
     for name, _ in pairs(commands) do
       if name:match("^KeyCoach") then
-        h.truthy(
-          contents:find(":" .. name, 1, true),
-          "help doc must document :" .. name
-        )
+        h.truthy(contents:find(":" .. name, 1, true), "help doc must document :" .. name)
       end
     end
   end)
