@@ -383,6 +383,74 @@ describe("recommendation engine", function()
     eq("<leader>ff", recommendation.mapping.lhs)
   end)
 
+  it("matches an existing x-mode mapping for visual and select observations", function()
+    local engine = require("keycoach.engine")
+
+    for _, observation_mode in ipairs({ "visual", "select" }) do
+      local transition, problem = engine.advance(nil, {
+        now_ms = 2000,
+        observations = repeated_actions("workspace.find_files", observation_mode),
+        feedback = {},
+        inventory = {
+          revision = "inventory-8",
+          complete = true,
+          conventions = {
+            leader = "<leader>",
+            localleader = "<localleader>",
+            prefixes = {},
+          },
+          mappings = {
+            {
+              mode = "x",
+              lhs = "<leader>ff",
+              action_id = "workspace.find_files",
+              desc = "Find files",
+              buffer = false,
+            },
+          },
+        },
+      })
+
+      eq(nil, problem)
+      eq(1, #transition.recommendations)
+      local recommendation = transition.recommendations[1]
+      eq("existing_mapping", recommendation.kind, observation_mode)
+      eq("<leader>ff", recommendation.mapping.lhs)
+    end
+  end)
+
+  it("does not treat a select-only mapping as existing for a visual observation", function()
+    local engine = require("keycoach.engine")
+
+    local transition, problem = engine.advance(nil, {
+      now_ms = 2000,
+      observations = repeated_actions("workspace.find_files", "visual"),
+      feedback = {},
+      inventory = {
+        revision = "inventory-9",
+        complete = true,
+        conventions = {
+          leader = "<leader>",
+          localleader = "<localleader>",
+          prefixes = {},
+        },
+        mappings = {
+          {
+            mode = "s",
+            lhs = "<leader>ff",
+            action_id = "workspace.find_files",
+            desc = "Select only",
+            buffer = false,
+          },
+        },
+      },
+    })
+
+    eq(nil, problem)
+    eq(1, #transition.recommendations)
+    eq("mapping_candidate", transition.recommendations[1].kind)
+  end)
+
   it("keeps canonical modes out of occupied keys when proposing a Mapping Candidate", function()
     local engine = require("keycoach.engine")
 

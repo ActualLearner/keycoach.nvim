@@ -133,6 +133,13 @@ local function modes_overlap(left, right)
     or right == "v" and (left == "x" or left == "s")
 end
 
+local function mode_covers(mapping_mode, observation_mode)
+  if mapping_mode == observation_mode then
+    return true
+  end
+  return mapping_mode == "x" and (observation_mode == "v" or observation_mode == "s")
+end
+
 local function problem(code, message, path)
   return {
     code = code,
@@ -825,7 +832,7 @@ end
 local function find_existing_mapping(inventory, aggregate)
   local matches = {}
   for _, mapping in ipairs(inventory.mappings) do
-    if mapping.mode == aggregate.mode and mapping.action_id == aggregate.action_id then
+    if mode_covers(mapping.mode, aggregate.mode) and mapping.action_id == aggregate.action_id then
       table.insert(matches, mapping)
     end
   end

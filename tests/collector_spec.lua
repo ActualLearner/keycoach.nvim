@@ -56,6 +56,13 @@ local function fake_hooks(overrides)
     return vim.fn.strchars(value)
   end
 
+  function hooks.command_exists(name)
+    if type(hooks.known_commands) == "table" then
+      return hooks.known_commands[name] == true
+    end
+    return true
+  end
+
   hooks.cmdline_value = {
     cmdtype = ":",
     abort = false,
@@ -366,6 +373,52 @@ h.describe("Neovim collector", function()
       end
       handle.stop()
     end
+  end)
+
+  h.it("does not record an unknown command that would error as E492", function()
+    local hooks = fake_hooks()
+    hooks.known_commands = { Example = true }
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Example" }
+    local emitted = {}
+    local handle = collector.start({
+      session = 16,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.autocmds.CmdlineLeave()
+    h.eq(1, #emitted)
+    h.eq("command:Example", emitted[1].action_id)
+
+    hooks.known_commands = {}
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Telescoop" }
+    hooks.autocmds.CmdlineLeave()
+    h.eq(1, #emitted, "unknown commands must not enter the evidence pool")
+
+    handle.stop()
+  end)
+
+  h.it("degrades to a category count when no invoking key context exists", function()
+    local hooks = fake_hooks()
+    hooks.context_value.mode = "c"
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Example" }
+    local emitted = {}
+    local handle = collector.start({
+      session = 17,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.autocmds.CmdlineLeave()
+    h.eq(1, #emitted)
+    h.eq("category:command", emitted[1].action_id)
+    h.eq("command_line", emitted[1].mode)
+    h.eq(false, emitted[1].bindable)
+    h.eq(nil, emitted[1].lhs)
+
+    handle.stop()
   end)
 
   h.it("stops observing commands when the collector is stopped", function()

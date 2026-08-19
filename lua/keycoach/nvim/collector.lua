@@ -141,6 +141,9 @@ local function neovim_hooks()
     strchars = function(value)
       return vim.fn.strchars(value)
     end,
+    command_exists = function(name)
+      return vim.fn.exists(":" .. name) == 1
+    end,
     cmdline_context = function()
       return {
         cmdtype = vim.v.event.cmdtype,
@@ -267,6 +270,9 @@ function M.start(options, hooks)
 
     local name = command_name(cmdline.line)
     if not name or name == "" then
+      return
+    end
+    if not hooks.command_exists(name) then
       return
     end
 

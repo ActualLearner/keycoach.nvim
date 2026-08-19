@@ -72,6 +72,13 @@ local function fake_hooks(overrides)
     return vim.fn.strchars(value)
   end
 
+  function hooks.command_exists(name)
+    if type(hooks.known_commands) == "table" then
+      return hooks.known_commands[name] == true
+    end
+    return true
+  end
+
   function hooks.cmdline_context()
     return vim.deepcopy(hooks.cmdline_value)
   end

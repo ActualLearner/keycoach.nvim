@@ -99,9 +99,12 @@ Weak or ambiguous evidence must stay silent (`engine_spec` silence cases).
 - Editor-action signals (undo/redo, cursor movement, selection changes) are
   supported by the capture schema but not yet collected by the Neovim adapter;
   the four V1 detectors do not depend on them.
-- A command that errors (e.g. an `E492` typo) still counts toward its command
-  identity; Neovim exposes no reliable post-execution success signal at
-  `CmdlineLeave`, so a few bad invocations are counted as weak evidence.
+- Unknown commands (a mistyped `:Telescoop`) are filtered at the source via
+  `exists(":name")`, so `E492` typos never enter the evidence pool. A command
+  that exists but errors while executing can still count toward its identity;
+  Neovim exposes no reliable post-execution success signal at `CmdlineLeave`,
+  and the engine's multi-session/high-frequency thresholds keep occasional
+  failures below the recommendation bar.
 - A legacy `:map x :X<CR>`-style mapping that itself opens a command line is
   recorded both as the mapping use and as the command identity. `<Cmd>`-style
   mappings (which the appender emits) do not double count.
