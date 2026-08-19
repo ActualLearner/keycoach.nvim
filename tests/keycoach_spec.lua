@@ -140,6 +140,48 @@ h.describe("KeyCoach public interface", function()
     h.eq("KC on", keycoach.statusline())
   end)
 
+  h.it("resolves a mapping whose leader contains a percent sign", function()
+    package.loaded["keycoach"] = nil
+
+    local collector = stub_collector()
+    local keycoach = require("keycoach")
+    vim.g.mapleader = "%"
+    keycoach.setup({
+      enabled = true,
+      inventory = {
+        snapshot = function()
+          return {
+            revision = "inventory-1",
+            complete = true,
+            conventions = {
+              leader = "<leader>",
+              localleader = "<localleader>",
+              prefixes = {},
+            },
+            mappings = {
+              {
+                mode = "n",
+                lhs = "<leader>e",
+                action_id = "command:Example",
+                desc = "example",
+                buffer = false,
+              },
+            },
+          }
+        end,
+      },
+      collector = collector,
+      now_ms = function()
+        return 2000
+      end,
+    })
+    local resolved = collector.captured.resolve_mapping("<leader>e", { mode = "n" })
+    vim.g.mapleader = nil
+
+    h.truthy(resolved)
+    h.eq(true, resolved.bindable)
+  end)
+
   h.it("registers its user commands during setup", function()
     package.loaded["keycoach"] = nil
 
@@ -479,7 +521,7 @@ h.describe("KeyCoach public interface", function()
     })
 
     h.eq(2, collector.captured.session)
-    h.eq(1, keycoach.status().pending_count)
+    h.eq(2, keycoach.status().pending_count)
   end)
 
   h.it("allocates a fresh session when resuming after the session was persisted", function()
@@ -579,5 +621,33 @@ h.describe("KeyCoach public interface", function()
       "command:Example",
       vim.json.decode(json).actions["n|command:Example|lua|file|none"].action_id
     )
+  end)
+
+  h.it("inspects the checkpoint as pretty-printed JSON in a scratch buffer", function()
+    package.loaded["keycoach"] = nil
+
+    local state_path = temporary_path("inspect/state.json")
+    local collector = stub_collector()
+    local keycoach = require("keycoach")
+    keycoach.setup({
+      enabled = true,
+      state_path = state_path,
+      inventory = empty_inventory(),
+      collector = collector,
+      now_ms = function()
+        return 2000
+      end,
+    })
+    collector.captured.emit(observations_for("command:Example")[1])
+    keycoach.flush()
+
+    keycoach.data({ action = "inspect" })
+    local buffer = vim.api.nvim_get_current_buf()
+    h.eq("json", vim.bo[buffer].filetype)
+    h.eq("nofile", vim.bo[buffer].buftype)
+    h.eq(false, vim.bo[buffer].modifiable)
+    local lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+    h.eq("{", lines[1])
+    h.truthy(table.concat(lines, "\n"):match('"n|command:Example|lua|file|none"'))
   end)
 end)

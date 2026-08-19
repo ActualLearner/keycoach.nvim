@@ -87,6 +87,7 @@ local function consent_lines(mapping_file, data_directory)
     "",
     "    Observe:   this Neovim, within the boundary from step 1",
     "    Analyze:   locally, during idle moments",
+    "    Suggest:   only in :KeyCoach — never as a popup",
     "    Append to: " .. vim.fn.fnamemodify(mapping_file, ":~"),
     "    Store:     " .. vim.fn.fnamemodify(data_directory, ":~") .. "  (30-day detail expiry)",
     "",
@@ -94,6 +95,19 @@ local function consent_lines(mapping_file, data_directory)
     "    Delete everything:   :KeyCoachClear",
     "",
     "  y start tracking    q not now",
+  }
+end
+
+local function preset_confirmation_lines(mapping_file)
+  return {
+    "",
+    "  Mappings file:",
+    "    " .. vim.fn.fnamemodify(mapping_file, ":~"),
+    "",
+    "  The file does not need to exist; its directory is created",
+    "  on first append.",
+    "",
+    "  <CR> confirm    c change file    q quit",
   }
 end
 
@@ -113,11 +127,7 @@ function M.run(options)
     })
   end
 
-  local function step_two()
-    if options.preset_mapping_file then
-      step_three(options.preset_mapping_file)
-      return
-    end
+  local function choose_file_step()
     open_step("KeyCoach Setup (2/3)", FILE_LINES, {
       ["<CR>"] = function()
         vim.ui.input({
@@ -133,6 +143,23 @@ function M.run(options)
       ["q"] = function() end,
       ["<Esc>"] = function() end,
     })
+  end
+
+  local function step_two()
+    if options.preset_mapping_file then
+      open_step("KeyCoach Setup (2/3)", preset_confirmation_lines(options.preset_mapping_file), {
+        ["<CR>"] = function()
+          step_three(options.preset_mapping_file)
+        end,
+        ["c"] = function()
+          choose_file_step()
+        end,
+        ["q"] = function() end,
+        ["<Esc>"] = function() end,
+      })
+      return
+    end
+    choose_file_step()
   end
 
   open_step("KeyCoach Setup (1/3)", BOUNDARY_LINES, {

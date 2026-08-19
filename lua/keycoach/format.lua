@@ -20,4 +20,34 @@ function M.evidence_summary(evidence)
   )
 end
 
+function M.pretty_json(value, indent)
+  indent = indent or 0
+  if type(value) ~= "table" then
+    return vim.json.encode(value)
+  end
+  local pad = string.rep("  ", indent)
+  if next(value) == nil then
+    return "{}"
+  end
+  if vim.tbl_islist(value) then
+    local parts = {}
+    for _, item in ipairs(value) do
+      parts[#parts + 1] = string.rep("  ", indent + 1) .. M.pretty_json(item, indent + 1)
+    end
+    return "[\n" .. table.concat(parts, ",\n") .. "\n" .. pad .. "]"
+  end
+  local keys = vim.tbl_keys(value)
+  table.sort(keys)
+  local parts = {}
+  for _, key in ipairs(keys) do
+    parts[#parts + 1] = string.format(
+      "%s%s: %s",
+      string.rep("  ", indent + 1),
+      vim.json.encode(key),
+      M.pretty_json(value[key], indent + 1)
+    )
+  end
+  return "{\n" .. table.concat(parts, ",\n") .. "\n" .. pad .. "}"
+end
+
 return M

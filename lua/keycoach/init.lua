@@ -125,8 +125,12 @@ local function expand_leader(lhs)
   local leader = vim.g.mapleader or "\\"
   local localleader = vim.g.maplocalleader or "\\"
   return lhs
-    :gsub("<[Ll][Ee][Aa][Dd][Ee][Rr]>", leader)
-    :gsub("<[Ll][Oo][Cc][Aa][Ll][Ll][Ee][Aa][Dd][Ee][Rr]>", localleader)
+    :gsub("<[Ll][Ee][Aa][Dd][Ee][Rr]>", function()
+      return leader
+    end)
+    :gsub("<[Ll][Oo][Cc][Aa][Ll][Ll][Ee][Aa][Dd][Ee][Rr]>", function()
+      return localleader
+    end)
 end
 
 local function canonical_lhs(lhs)
@@ -260,6 +264,10 @@ collector_emit = function(observation)
     and at_ms - state.last_observation_ms > state.session_idle_ms
   then
     start_tracking()
+    state.last_observation_ms = at_ms
+    if #state.pending < state.max_pending then
+      table.insert(state.pending, observation)
+    end
     return
   end
   if at_ms then
@@ -496,13 +504,15 @@ local function keymap_set_line(candidate)
 end
 
 local function require_name(path)
-  local name = path:gsub("%.lua$", "")
   local config = vim.fn.stdpath("config")
-  name = name:gsub("^" .. vim.pesc(config .. "/"), "")
-  name = name:gsub("^lua/", "")
-  name = name:gsub("/", ".")
+  local prefix = config .. "/lua/"
+  local expanded = vim.fn.expand(path)
+  if expanded:sub(1, #prefix) ~= prefix then
+    return nil
+  end
+  local name = expanded:sub(#prefix + 1):gsub("%.lua$", ""):gsub("/", ".")
   if name == "" then
-    return path
+    return nil
   end
   return name
 end
@@ -580,7 +590,10 @@ local function apply_mapping_candidate(recommendation, options)
   local message = "Appended " .. result.line
   if not apply_hint_shown then
     apply_hint_shown = true
-    message = message .. "  Require " .. require_name(state.mapping_file) .. " to activate it."
+    local module = require_name(state.mapping_file)
+    local load_snippet = module and ("require(" .. vim.inspect(module) .. ")")
+      or ("dofile(" .. vim.inspect(vim.fn.expand(state.mapping_file)) .. ")")
+    message = message .. "  Add " .. load_snippet .. " to your config to activate it."
   end
   vim.notify(message, vim.log.levels.INFO, { title = "KeyCoach" })
   return { applied = true, line = result.line }, nil
@@ -666,11 +679,24 @@ local function menu_for(recommendation)
 end
 
 function M.data_inspect()
-  local buffer = vim.api.nvim_create_buf(true, false)
-  local contents = vim.inspect(state.checkpoint or {})
+  local buffer = vim.api.nvim_create_buf(false, true)
+  local contents = format.pretty_json(state.checkpoint or {})
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, vim.split(contents, "\n", { plain = true }))
-  vim.api.nvim_set_option_value("filetype", "lua", { buf = buffer })
-  vim.api.nvim_win_set_buf(0, buffer)
+  vim.api.nvim_set_option_value("buftype", "nofile", { buf = buffer })
+  vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buffer })
+  vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
+  vim.api.nvim_set_option_value("filetype", "json", { buf = buffer })
+  local window = vim.api.nvim_win_set_buf(0, buffer)
+  vim.keymap.set("n", "q", function()
+    if vim.api.nvim_win_is_valid(window) then
+      vim.api.nvim_win_close(window, true)
+    end
+  end, { buffer = buffer, nowait = true, silent = true })
+  vim.keymap.set("n", "<Esc>", function()
+    if vim.api.nvim_win_is_valid(window) then
+      vim.api.nvim_win_close(window, true)
+    end
+  end, { buffer = buffer, nowait = true, silent = true })
 end
 
 local function write_export(path)
@@ -941,7 +967,7 @@ function M.open()
     end,
     on_apply = function(recommendation)
       local _, problem = M.apply(recommendation)
-      if problem then
+      if problem and problem.code ~= "declined" then
         vim.notify(
           "KeyCoach: " .. tostring(problem.message or problem.code),
           vim.log.levels.WARN,

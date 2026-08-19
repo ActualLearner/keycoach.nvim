@@ -144,7 +144,7 @@ KeyCoach never rewrites or removes existing configuration.
 
 ## Data controls
 
-Local state is stored beneath `stdpath("state")/keycoach/`. Use
+Local state is stored beneath `stdpath("data")/keycoach/`. Use
 `:KeyCoachClear` to remove it. Exclusions remain reversible in the dashboard.
 
 ## Development
