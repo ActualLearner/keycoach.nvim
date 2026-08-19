@@ -26,7 +26,7 @@ local function analysis_cycle(now_ms, observations)
   }
 end
 
-local function repeated_actions(action_id)
+local function repeated_actions(action_id, mode)
   local observations = {}
   for ordinal = 1, 10 do
     local session = math.floor((ordinal - 1) / 4) + 1
@@ -37,7 +37,7 @@ local function repeated_actions(action_id)
       at_ms = ordinal * 100,
       kind = "action",
       action_id = action_id,
-      mode = "n",
+      mode = mode or "n",
       source = "command",
       bindable = true,
       cost = 5,
@@ -347,6 +347,74 @@ describe("recommendation engine", function()
     eq("workspace.find_files", recommendation.action_id)
     eq(10, recommendation.evidence.occurrences)
     eq(3, recommendation.evidence.sessions)
+  end)
+
+  it("recommends an Existing Mapping for observations with canonical adapter modes", function()
+    local engine = require("keycoach.engine")
+
+    local transition, problem = engine.advance(nil, {
+      now_ms = 2000,
+      observations = repeated_actions("workspace.find_files", "normal"),
+      feedback = {},
+      inventory = {
+        revision = "inventory-1",
+        complete = true,
+        conventions = {
+          leader = "<leader>",
+          localleader = "<localleader>",
+          prefixes = { "<leader>f" },
+        },
+        mappings = {
+          {
+            mode = "n",
+            lhs = "<leader>ff",
+            action_id = "workspace.find_files",
+            desc = "Find files",
+            buffer = false,
+          },
+        },
+      },
+    })
+
+    eq(nil, problem)
+    eq(1, #transition.recommendations)
+    local recommendation = transition.recommendations[1]
+    eq("existing_mapping", recommendation.kind)
+    eq("<leader>ff", recommendation.mapping.lhs)
+  end)
+
+  it("keeps canonical modes out of occupied keys when proposing a Mapping Candidate", function()
+    local engine = require("keycoach.engine")
+
+    local transition, problem = engine.advance(nil, {
+      now_ms = 2000,
+      observations = repeated_actions("workspace.find_files", "normal"),
+      feedback = {},
+      inventory = {
+        revision = "inventory-7",
+        complete = true,
+        conventions = {
+          leader = "<leader>",
+          localleader = "<localleader>",
+          prefixes = { "<leader>e" },
+        },
+        mappings = {
+          {
+            mode = "n",
+            lhs = "<leader>e",
+            action_id = "workspace.other_action",
+            desc = "Occupied",
+            buffer = false,
+          },
+        },
+      },
+    })
+
+    eq(nil, problem)
+    eq(1, #transition.recommendations)
+    local recommendation = transition.recommendations[1]
+    eq("mapping_candidate", recommendation.kind)
+    eq(false, recommendation.mapping.lhs == "<leader>e")
   end)
 
   it("proposes a conflict-free Mapping Candidate for a frequent unmapped action", function()
