@@ -1,0 +1,275 @@
+*keycoach.txt*     Local-first workflow coaching for Neovim
+
+==============================================================================
+KeyCoach                                                        *keycoach*
+
+KeyCoach is a local-first workflow coach for experienced Neovim users. It
+observes privacy-safe editor actions, finds recurring inefficient patterns,
+and recommends an existing mapping or a conflict-free mapping you can add to
+your own config.
+
+KeyCoach stays quiet while you edit: recommendations appear only in the
+dashboard you open yourself, and only for patterns with evidence across
+several sessions.
+
+CONTENTS                                        *keycoach-contents*
+
+  1. Installation..................|keycoach-installation|
+  2. Setup and first run..........|keycoach-setup|
+  3. Commands.....................|keycoach-commands|
+  4. Dashboard....................|keycoach-dashboard|
+  5. Statusline...................|keycoach-statusline|
+  6. Privacy and capture boundary.|keycoach-privacy|
+  7. Data management..............|keycoach-data|
+  8. Configuration................|keycoach-configuration|
+  9. Development..................|keycoach-development|
+
+==============================================================================
+1. Installation                                  *keycoach-installation*
+
+Requirements:
+  - Neovim 0.10 or newer
+  - A user-selected Lua file where accepted mappings may be appended
+
+KeyCoach uses public Neovim APIs and has no dependency on a specific
+distribution or plugin manager.
+
+lazy.nvim and LazyVim: >
+  {
+    "ActualLearner/keycoach.nvim",
+    opts = {
+      mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
+    },
+  }
+<
+packer.nvim: >
+  use({
+    "ActualLearner/keycoach.nvim",
+    config = function()
+      require("keycoach").setup({
+        mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
+      })
+    end,
+  })
+<
+vim-plug: >
+  Plug 'ActualLearner/keycoach.nvim'
+<
+Then set it up in your init.lua: >
+  require("keycoach").setup({
+    mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
+  })
+<
+
+Make sure Neovim loads the selected mappings file. This safe pattern also
+works before the first mapping has been added: >
+  local keycoach_mappings = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua"
+  if vim.uv.fs_stat(keycoach_mappings) then
+    dofile(keycoach_mappings)
+  end
+<
+
+==============================================================================
+2. Setup and first run                              *keycoach-setup*
+
+On the first run, before any observation starts, KeyCoach walks through
+three steps in a sequence of floating windows:
+
+  1. The capture boundary is explained (see |keycoach-privacy|).
+  2. You choose the Lua mappings file accepted candidates may be appended
+     to.
+  3. You give explicit consent to begin tracking.
+
+Nothing is persisted until the final consent. An abandoned walkthrough
+restarts cleanly from step 1. The walkthrough runs only while KeyCoach is
+in the pending setup state, which happens when setup() runs without
+enabled = true and no consent record exists yet. While pending, KeyCoach
+observes nothing and shows a single setup hint after startup. Passing
+enabled = false disables tracking and skips that hint entirely.
+
+Passing enabled = true to setup() is equivalent explicit consent and skips
+the walkthrough. Without consent KeyCoach observes nothing.
+
+After setup, tracking starts immediately. Open the dashboard any time with
+:KeyCoach (see |keycoach-dashboard|).
+
+==============================================================================
+3. Commands                                         *keycoach-commands*
+
+:KeyCoach         Open ranked recommendations, or start first-run setup when
+                  KeyCoach has not been configured yet.
+
+:KeyCoachEnable   Complete setup and enable tracking. Runs the walkthrough
+                  when consent is missing.
+
+:KeyCoachPause    Pause observation immediately. Existing evidence and
+                  recommendations are kept.
+
+:KeyCoachResume   Resume observation where it left off.
+
+:KeyCoachStatus   Show tracking and recommendation status (see
+                  |keycoach-statusline|).
+
+:KeyCoachMappings Open the configured mappings file in the current window.
+
+:KeyCoachData     Inspect, export, restore an exclusion, or delete local
+                  data (see |keycoach-data|).
+
+:KeyCoachClear    Delete locally stored observations after confirmation.
+                  Consent and the mappings-file setting are kept.
+
+==============================================================================
+4. Dashboard                                       *keycoach-dashboard*
+
+The dashboard is pull-first: KeyCoach never interrupts active editing with
+recommendation popups. It opens as a centered floating window and shows
+ranked recommendations.
+
+Each recommendation is a card with a title, the action involved, and the
+evidence behind it, for example:
+
+  1  Use existing mapping  <leader>ff
+     telescope.find_files · 42 uses across 6 sessions · ~120 keys saved
+
+The recommendation types are:
+  - Use existing mapping: a frequently used action already has a mapping
+    you are not using.
+  - Add mapping: a conflict-free mapping candidate for a bindable action
+    or a repeated action sequence.
+  - Use native action: a shorter native action for a verbose repeated
+    pattern (for example 5j instead of jjjjj).
+
+Keys in the dashboard:
+  <CR>  Apply a mapping candidate, or acknowledge an existing mapping or
+        native action.
+  o     Open the per-recommendation menu (also <Tab>).
+  r     Refresh the dashboard.
+  q     Close the dashboard (also <Esc>).
+
+The per-recommendation menu offers:
+  Another key            Regenerate the candidate. A key rejected for a
+                         workflow pattern is never re-proposed for it.
+  Snooze 30 days         Suppress the recommendation until materially
+                         stronger new evidence makes it relevant again.
+  Never suggest this     Exclude the workflow pattern permanently.
+                         Reversible through :KeyCoachData.
+  Why am I seeing this?  Show the evidence behind the recommendation.
+
+Applying a mapping candidate rechecks the live mapping inventory before
+writing. Accepted mappings are appended as readable vim.keymap.set(...)
+statements; KeyCoach never rewrites or removes existing configuration.
+After the first apply, activate the file by requiring it from your config
+(see |keycoach-installation|).
+
+An accepted recommendation leaves the list. Later sessions determine
+adoption: once the mapping shows up in normal work across enough sessions,
+the workflow pattern retires for good; if the original long way keeps
+recurring instead, the recommendation becomes available again rather than
+nagging you.
+
+==============================================================================
+5. Statusline                                       *keycoach-statusline*
+
+require("keycoach").statusline() returns a compact status string:
+
+  KC off      Tracking disabled.
+  KC setup    KeyCoach installed but not set up.
+  KC on       Tracking, no ready recommendations.
+  KC <n>      Tracking, n ready recommendations.
+  KC paused   Tracking paused.
+
+For lualine.nvim: >
+  require("lualine").setup({
+    sections = {
+      lualine_x = {
+        { require("keycoach").statusline },
+      },
+    },
+  })
+<
+
+==============================================================================
+6. Privacy and capture boundary                    *keycoach-privacy*
+
+All analysis happens locally. KeyCoach never persists inserted text, command
+or search arguments, clipboard data, file contents, paths, or project
+names.
+
+Exact keys are eligible for observation only in Normal, Visual, Select, and
+Operator-pending modes. Content-bearing modes are reduced immediately to
+safe action categories and counts:
+  - Insert, Replace, Search, and Command-line modes are recorded only as
+    counts and categories.
+  - Mouse buttons, scrolling, mode changes, and command identities (without
+    arguments) may be observed.
+  - Terminal and prompt buffers are never observed in detail.
+
+Detailed normalized observations expire after the configured retention
+period (default 30 days, see |keycoach-configuration|); compact aggregate
+evidence may remain.
+
+Exclusions are explicit and reversible. A snoozed recommendation returns
+only when recurrence since the snooze exceeds the evidence that originally
+triggered it.
+
+==============================================================================
+7. Data management                                 *keycoach-data*
+
+Local state lives beneath stdpath("data")/keycoach/:
+
+  settings.json    Consent and the mappings-file setting.
+  checkpoint.json  The evidence checkpoint: observations, aggregates,
+                   suppressions, and accepted mappings.
+
+:KeyCoachData opens a small menu:
+
+  Inspect               Show the checkpoint as pretty-printed JSON in a
+                        scratch buffer.
+  Export                Write the checkpoint JSON to a path you choose
+                        (default ~/keycoach-export.json).
+  Restore an exclusion  Pick an excluded workflow pattern to un-exclude.
+  Delete everything     Delete the evidence checkpoint. Consent and
+                        settings survive.
+
+:KeyCoachClear is the same delete action and never revokes consent.
+
+==============================================================================
+8. Configuration                                   *keycoach-configuration*
+
+require("keycoach").setup({ ... })
+
+mapping_file  (string, required to apply generated mappings) Path of the
+              Lua file accepted candidates are appended to. Defaults to
+              stdpath("config") .. "/lua/keycoach_mappings.lua" when chosen
+              in the walkthrough.
+
+enabled       (boolean|nil, default nil) nil uses saved consent or starts
+              first-run onboarding; true is explicit consent and skips the
+              walkthrough; false disables tracking regardless of consent.
+
+retention_days  (number, default 30) Detailed normalized observations
+              expire after this many days.
+
+session_idle_minutes  (number, default 30) Consecutive inactivity that
+              starts a new evidence session.
+
+==============================================================================
+9. Development                                     *keycoach-development*
+
+Requires StyLua for make lint. Run: >
+  make test
+  make check
+  make lint
+<
+Tests run headlessly in Neovim without a third-party test framework. The
+recommendation engine is deterministic and exercised through portable
+fixture shapes so later editor adapters can reproduce its behavior.
+
+See also:
+  - Product specification: docs/product-spec.md
+  - Recommendation engine design: docs/design/recommendation-engine.md
+  - Architecture decision records: docs/adr/
+  - Roadmap: docs/roadmap.md
+  - Domain language: CONTEXT.md
+
+vim:tw=78:ts=8:noet:ft=help:norl:
