@@ -27,7 +27,8 @@ h.describe("mapping appender", function()
   h.it("appends one readable keymap statement to a selected Lua file", function()
     local appender = require("keycoach.appender")
     local path = temporary_path("mappings.lua")
-    local expected_line = 'vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "Find files", silent = true })'
+    local expected_line =
+      'vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "Find files", silent = true })'
 
     local result, problem = appender.append(path, {
       mode = "n",

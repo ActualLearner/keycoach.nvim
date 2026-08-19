@@ -149,9 +149,12 @@ Local state is stored beneath `stdpath("data")/keycoach/`. Use
 
 ## Development
 
+StyLua is required for `make lint`.
+
 ```sh
 make test
 make check
+make lint
 ```
 
 Tests run headlessly in Neovim without a third-party test framework. The

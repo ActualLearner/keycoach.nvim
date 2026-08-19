@@ -22,4 +22,15 @@ jobs:
         with:
           version: ${{ matrix.neovim }}
           neovim: true
-      - run: make test
+      - run: make check
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stylua 2.0.2
+        run: |
+          curl -sSLf -o /tmp/stylua.zip \
+            https://github.com/JohnnyMorganz/StyLua/releases/download/v2.0.2/stylua-linux-x86_64.zip
+          unzip -o /tmp/stylua.zip -d /usr/local/bin
+      - run: make lint

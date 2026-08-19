@@ -194,7 +194,8 @@ local function context_from(environment)
     filetype = safe_label(raw.filetype, "none", "unknown"),
     buffer_kind = buffer_kind,
     plugin_context = safe_label(raw.plugin_context, "none", "none"),
-  }, canonical_mode(raw.mode, buffer_kind)
+  },
+    canonical_mode(raw.mode, buffer_kind)
 end
 
 function M.observe(signal, environment)
@@ -233,7 +234,8 @@ function M.observe(signal, environment)
     source = is_editor and "editor" or (SOURCES[signal.source] and signal.source or "editor")
     lhs = valid_action and signal.lhs or nil
   else
-    action_id = key and ("key:" .. key) or ("category:" .. (INPUT_CATEGORIES[mode] or "other_input"))
+    action_id = key and ("key:" .. key)
+      or ("category:" .. (INPUT_CATEGORIES[mode] or "other_input"))
     source = "keys"
     lhs = key
   end

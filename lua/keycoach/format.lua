@@ -1,5 +1,7 @@
 local M = {}
 
+local is_list = vim.islist or vim.tbl_islist
+
 function M.recommendation_title(recommendation)
   if recommendation.kind == "existing_mapping" then
     return "Use existing mapping  " .. recommendation.mapping.lhs
@@ -29,7 +31,7 @@ function M.pretty_json(value, indent)
   if next(value) == nil then
     return "{}"
   end
-  if vim.tbl_islist(value) then
+  if is_list(value) then
     local parts = {}
     for _, item in ipairs(value) do
       parts[#parts + 1] = string.rep("  ", indent + 1) .. M.pretty_json(item, indent + 1)

@@ -46,8 +46,7 @@ local function command_action(rhs)
     return nil
   end
 
-  local name = rhs:match("^%s*<[Cc][Mm][Dd]>%s*([%a][%w_]*)")
-    or rhs:match("^%s*:%s*([%a][%w_]*)")
+  local name = rhs:match("^%s*<[Cc][Mm][Dd]>%s*([%a][%w_]*)") or rhs:match("^%s*:%s*([%a][%w_]*)")
   return name and ("command:" .. name) or nil
 end
 
@@ -56,7 +55,8 @@ local function default_hash(value)
 end
 
 local function action_id_for(mapping, mode, lhs, hash)
-  if type(mapping.action_id) == "string"
+  if
+    type(mapping.action_id) == "string"
     and mapping.action_id:match("^[%w][%w_.:%-]*$")
     and #mapping.action_id <= 128
   then
@@ -167,16 +167,8 @@ function M.snapshot(options)
       return nil, problem(globals)
     end
     for _, raw in ipairs(globals) do
-      local added, add_problem = add_mapping(
-        mappings,
-        seen,
-        raw,
-        mode,
-        false,
-        leader,
-        localleader,
-        hash
-      )
+      local added, add_problem =
+        add_mapping(mappings, seen, raw, mode, false, leader, localleader, hash)
       if not added then
         return nil, add_problem
       end
@@ -188,16 +180,8 @@ function M.snapshot(options)
         return nil, problem(locals)
       end
       for _, raw in ipairs(locals) do
-        local added, add_problem = add_mapping(
-          mappings,
-          seen,
-          raw,
-          mode,
-          buffer,
-          leader,
-          localleader,
-          hash
-        )
+        local added, add_problem =
+          add_mapping(mappings, seen, raw, mode, buffer, leader, localleader, hash)
         if not added then
           return nil, add_problem
         end
@@ -208,12 +192,15 @@ function M.snapshot(options)
   table.sort(mappings, mapping_sort)
   local revision_parts = { leader, localleader }
   for _, mapping in ipairs(mappings) do
-    table.insert(revision_parts, table.concat({
-      mapping.mode,
-      mapping.lhs,
-      mapping.action_id,
-      tostring(mapping.buffer),
-    }, "|"))
+    table.insert(
+      revision_parts,
+      table.concat({
+        mapping.mode,
+        mapping.lhs,
+        mapping.action_id,
+        tostring(mapping.buffer),
+      }, "|")
+    )
   end
 
   return {
@@ -225,7 +212,8 @@ function M.snapshot(options)
       prefixes = collect_prefixes(mappings),
     },
     mappings = mappings,
-  }, nil
+  },
+    nil
 end
 
 local function modes_overlap(left, right)
@@ -240,7 +228,8 @@ function M.conflict(snapshot, candidate)
   if type(snapshot) ~= "table" or type(snapshot.mappings) ~= "table" then
     return nil
   end
-  if type(candidate) ~= "table"
+  if
+    type(candidate) ~= "table"
     or type(candidate.mode) ~= "string"
     or type(candidate.lhs) ~= "string"
   then
