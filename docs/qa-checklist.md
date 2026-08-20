@@ -105,6 +105,11 @@ Weak or ambiguous evidence must stay silent (`engine_spec` silence cases).
   Neovim exposes no reliable post-execution success signal at `CmdlineLeave`,
   and the engine's multi-session/high-frequency thresholds keep occasional
   failures below the recommendation bar.
+- Command identities strip leading command modifiers (`:silent w` records
+  `command:w`), but ranged and global-filter invocations (`:%s`, `:'<,'>d`,
+  `:g/pat/d`, `:1,5d`) are treated like the excluded range forms and produce
+  no identity. Ranged uses of a bindable command therefore do not contribute
+  to its "frequently used" evidence.
 - A legacy `:map x :X<CR>`-style mapping that itself opens a command line is
   recorded both as the mapping use and as the command identity. `<Cmd>`-style
   mappings (which the appender emits) do not double count.

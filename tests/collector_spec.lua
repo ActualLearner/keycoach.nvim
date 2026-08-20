@@ -375,6 +375,70 @@ h.describe("Neovim collector", function()
     end
   end)
 
+  h.it("skips command modifiers and global filter forms", function()
+    local cases = {
+      { line = "silent w", expect = "command:w" },
+      { line = "silent! write", expect = "command:write" },
+      { line = "tab split", expect = "command:split" },
+      { line = "vertical resize 10", expect = "command:resize" },
+      { line = "keepjumps w", expect = "command:w" },
+      { line = "g/pattern/d", expect = nil },
+      { line = "v/pattern/d", expect = nil },
+    }
+
+    for _, case in ipairs(cases) do
+      local hooks = fake_hooks()
+      hooks.cmdline_value = {
+        cmdtype = ":",
+        abort = false,
+        line = case.line,
+      }
+      local emitted = {}
+      local handle = collector.start({
+        session = 19,
+        emit = function(observation)
+          table.insert(emitted, observation)
+        end,
+      }, hooks)
+
+      hooks.autocmds.CmdlineLeave()
+
+      if case.expect then
+        h.eq(1, #emitted, case.line .. " must record one command identity")
+        h.eq(case.expect, emitted[1].action_id, case.line)
+      else
+        h.eq(0, #emitted, case.line .. " must not record an Observation")
+      end
+      handle.stop()
+    end
+  end)
+
+  h.it("keeps any existing command under Vim exists semantics", function()
+    vim.cmd("command! -bar KeyCoachExistenceCheck")
+    local hooks = fake_hooks()
+    hooks.command_exists = function(name)
+      return vim.fn.exists(":" .. name) ~= 0
+    end
+    local emitted = {}
+    local handle = collector.start({
+      session = 20,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "KeyCoachExistenceCheck" }
+    hooks.autocmds.CmdlineLeave()
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Telescoop" }
+    hooks.autocmds.CmdlineLeave()
+
+    h.eq(1, #emitted)
+    h.eq("command:KeyCoachExistenceCheck", emitted[1].action_id)
+
+    handle.stop()
+    pcall(vim.cmd, "delcommand KeyCoachExistenceCheck")
+  end)
+
   h.it("does not record an unknown command that would error as E492", function()
     local hooks = fake_hooks()
     hooks.known_commands = { Example = true }

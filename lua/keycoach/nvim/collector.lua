@@ -142,7 +142,7 @@ local function neovim_hooks()
       return vim.fn.strchars(value)
     end,
     command_exists = function(name)
-      return vim.fn.exists(":" .. name) == 1
+      return vim.fn.exists(":" .. name) ~= 0
     end,
     cmdline_context = function()
       return {
@@ -249,8 +249,52 @@ function M.start(options, hooks)
     flush_pending()
   end
 
+  local COMMAND_MODIFIERS = {
+    aboveleft = true,
+    belowright = true,
+    botright = true,
+    browse = true,
+    confirm = true,
+    hide = true,
+    horizontal = true,
+    keepalt = true,
+    keepbreaks = true,
+    keepjumps = true,
+    keepmarks = true,
+    keeppatterns = true,
+    leftabove = true,
+    leftbelow = true,
+    lockmarks = true,
+    noautocmd = true,
+    noswapfile = true,
+    rightabove = true,
+    rightbelow = true,
+    sandbox = true,
+    silent = true,
+    tab = true,
+    topleft = true,
+    verbose = true,
+    vertical = true,
+    wait = true,
+  }
+
   local function command_name(line)
-    return line:match("^%s*([%a][%w_]*)")
+    local rest = line
+    while true do
+      local token, _, tail = rest:match("^%s*([%a][%w_]*)(!?)(.*)$")
+      if not token then
+        return nil
+      end
+      if COMMAND_MODIFIERS[token] then
+        rest = tail
+      else
+        local filter = token == "g" or token == "v" or token == "global" or token == "vglobal"
+        if filter and (tail:sub(1, 1) == "/" or tail:sub(1, 1) == "!") then
+          return nil
+        end
+        return token
+      end
+    end
   end
 
   local function collect_command()
