@@ -137,7 +137,8 @@ local function mode_covers(mapping_mode, observation_mode)
   if mapping_mode == observation_mode then
     return true
   end
-  return mapping_mode == "x" and (observation_mode == "v" or observation_mode == "s")
+  return mapping_mode == "v" and observation_mode == "s"
+    or mapping_mode == "x" and observation_mode == "v"
 end
 
 local function problem(code, message, path)

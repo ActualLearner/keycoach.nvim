@@ -72,11 +72,15 @@ local function fake_hooks(overrides)
     return vim.fn.strchars(value)
   end
 
-  function hooks.command_exists(name)
-    if type(hooks.known_commands) == "table" then
-      return hooks.known_commands[name] == true
+  function hooks.parse_command(line)
+    if type(hooks.parse_override) == "table" and hooks.parse_override[line] ~= nil then
+      return hooks.parse_override[line]
     end
-    return true
+    local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
+    if ok and type(parsed) == "table" then
+      return parsed
+    end
+    return nil
   end
 
   function hooks.cmdline_context()
@@ -169,6 +173,7 @@ h.describe("wired plugin smoke", function()
       h.eq("tracking", keycoach.status().tracking)
       h.eq(true, keycoach.inspect().settings.consent)
 
+      hooks.parse_override = { Example = { cmd = "Example", range = {} } }
       hooks.key_callback(nil, ":")
       hooks.context_value.mode = "c"
       hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Example" }

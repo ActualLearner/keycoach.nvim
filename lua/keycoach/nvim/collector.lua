@@ -141,8 +141,12 @@ local function neovim_hooks()
     strchars = function(value)
       return vim.fn.strchars(value)
     end,
-    command_exists = function(name)
-      return vim.fn.exists(":" .. name) ~= 0
+    parse_command = function(line)
+      local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
+      if ok and type(parsed) == "table" then
+        return parsed
+      end
+      return nil
     end,
     cmdline_context = function()
       return {
@@ -249,54 +253,6 @@ function M.start(options, hooks)
     flush_pending()
   end
 
-  local COMMAND_MODIFIERS = {
-    aboveleft = true,
-    belowright = true,
-    botright = true,
-    browse = true,
-    confirm = true,
-    hide = true,
-    horizontal = true,
-    keepalt = true,
-    keepbreaks = true,
-    keepjumps = true,
-    keepmarks = true,
-    keeppatterns = true,
-    leftabove = true,
-    leftbelow = true,
-    lockmarks = true,
-    noautocmd = true,
-    noswapfile = true,
-    rightabove = true,
-    rightbelow = true,
-    sandbox = true,
-    silent = true,
-    tab = true,
-    topleft = true,
-    verbose = true,
-    vertical = true,
-    wait = true,
-  }
-
-  local function command_name(line)
-    local rest = line
-    while true do
-      local token, _, tail = rest:match("^%s*([%a][%w_]*)(!?)(.*)$")
-      if not token then
-        return nil
-      end
-      if COMMAND_MODIFIERS[token] then
-        rest = tail
-      else
-        local filter = token == "g" or token == "v" or token == "global" or token == "vglobal"
-        if filter and (tail:sub(1, 1) == "/" or tail:sub(1, 1) == "!") then
-          return nil
-        end
-        return token
-      end
-    end
-  end
-
   local function collect_command()
     if not active then
       return
@@ -312,11 +268,15 @@ function M.start(options, hooks)
       return
     end
 
-    local name = command_name(cmdline.line)
-    if not name or name == "" then
+    local parsed = hooks.parse_command(cmdline.line)
+    local name = parsed and parsed.cmd
+    if type(name) ~= "string" or name == "" then
       return
     end
-    if not hooks.command_exists(name) then
+    if name == "global" or name == "vglobal" then
+      return
+    end
+    if parsed.range and #parsed.range > 0 then
       return
     end
 

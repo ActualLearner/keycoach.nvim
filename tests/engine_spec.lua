@@ -383,13 +383,19 @@ describe("recommendation engine", function()
     eq("<leader>ff", recommendation.mapping.lhs)
   end)
 
-  it("matches an existing x-mode mapping for visual and select observations", function()
+  it("matches existing visual-family mappings for visual and select observations", function()
     local engine = require("keycoach.engine")
 
-    for _, observation_mode in ipairs({ "visual", "select" }) do
+    local cases = {
+      { mapping_mode = "x", observation_mode = "visual" },
+      { mapping_mode = "v", observation_mode = "visual" },
+      { mapping_mode = "v", observation_mode = "select" },
+    }
+
+    for _, case in ipairs(cases) do
       local transition, problem = engine.advance(nil, {
         now_ms = 2000,
-        observations = repeated_actions("workspace.find_files", observation_mode),
+        observations = repeated_actions("workspace.find_files", case.observation_mode),
         feedback = {},
         inventory = {
           revision = "inventory-8",
@@ -401,7 +407,7 @@ describe("recommendation engine", function()
           },
           mappings = {
             {
-              mode = "x",
+              mode = case.mapping_mode,
               lhs = "<leader>ff",
               action_id = "workspace.find_files",
               desc = "Find files",
@@ -414,41 +420,52 @@ describe("recommendation engine", function()
       eq(nil, problem)
       eq(1, #transition.recommendations)
       local recommendation = transition.recommendations[1]
-      eq("existing_mapping", recommendation.kind, observation_mode)
+      eq("existing_mapping", recommendation.kind, case.mapping_mode .. "/" .. case.observation_mode)
       eq("<leader>ff", recommendation.mapping.lhs)
     end
   end)
 
-  it("does not treat a select-only mapping as existing for a visual observation", function()
+  it("does not treat visual-only or select-only mappings as existing across families", function()
     local engine = require("keycoach.engine")
 
-    local transition, problem = engine.advance(nil, {
-      now_ms = 2000,
-      observations = repeated_actions("workspace.find_files", "visual"),
-      feedback = {},
-      inventory = {
-        revision = "inventory-9",
-        complete = true,
-        conventions = {
-          leader = "<leader>",
-          localleader = "<localleader>",
-          prefixes = {},
-        },
-        mappings = {
-          {
-            mode = "s",
-            lhs = "<leader>ff",
-            action_id = "workspace.find_files",
-            desc = "Select only",
-            buffer = false,
+    local cases = {
+      { mapping_mode = "x", observation_mode = "select" },
+      { mapping_mode = "s", observation_mode = "visual" },
+    }
+
+    for _, case in ipairs(cases) do
+      local transition, problem = engine.advance(nil, {
+        now_ms = 2000,
+        observations = repeated_actions("workspace.find_files", case.observation_mode),
+        feedback = {},
+        inventory = {
+          revision = "inventory-9",
+          complete = true,
+          conventions = {
+            leader = "<leader>",
+            localleader = "<localleader>",
+            prefixes = {},
+          },
+          mappings = {
+            {
+              mode = case.mapping_mode,
+              lhs = "<leader>ff",
+              action_id = "workspace.find_files",
+              desc = "Family mismatch",
+              buffer = false,
+            },
           },
         },
-      },
-    })
+      })
 
-    eq(nil, problem)
-    eq(1, #transition.recommendations)
-    eq("mapping_candidate", transition.recommendations[1].kind)
+      eq(nil, problem)
+      eq(1, #transition.recommendations)
+      eq(
+        "mapping_candidate",
+        transition.recommendations[1].kind,
+        case.mapping_mode .. "/" .. case.observation_mode
+      )
+    end
   end)
 
   it("keeps canonical modes out of occupied keys when proposing a Mapping Candidate", function()

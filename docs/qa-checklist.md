@@ -99,17 +99,20 @@ Weak or ambiguous evidence must stay silent (`engine_spec` silence cases).
 - Editor-action signals (undo/redo, cursor movement, selection changes) are
   supported by the capture schema but not yet collected by the Neovim adapter;
   the four V1 detectors do not depend on them.
-- Unknown commands (a mistyped `:Telescoop`) are filtered at the source via
-  `exists(":name")`, so `E492` typos never enter the evidence pool. A command
-  that exists but errors while executing can still count toward its identity;
-  Neovim exposes no reliable post-execution success signal at `CmdlineLeave`,
-  and the engine's multi-session/high-frequency thresholds keep occasional
-  failures below the recommendation bar.
-- Command identities strip leading command modifiers (`:silent w` records
-  `command:w`), but ranged and global-filter invocations (`:%s`, `:'<,'>d`,
-  `:g/pat/d`, `:1,5d`) are treated like the excluded range forms and produce
-  no identity. Ranged uses of a bindable command therefore do not contribute
-  to its "frequently used" evidence.
+- Unknown commands (a mistyped `:Telescoop`) are filtered at the source with
+  Neovim's own command parser (`nvim_parse_cmd` rejects them exactly when
+  execution would fail with `E492`), so typos never enter the evidence pool.
+  A command that exists but errors while executing can still count toward its
+  identity; Neovim exposes no reliable post-execution success signal at
+  `CmdlineLeave`, and the engine's multi-session/high-frequency thresholds
+  keep occasional failures below the recommendation bar.
+- Command identities are canonical full names resolved by `nvim_parse_cmd`
+  (`:w!`, `:write`, and `:sil w` all record `command:write`; leading
+  modifiers never leak into the identity). Ranged invocations (`:%s`,
+  `:'<,'>d`, `:1,5d`) and global/filter forms (`:g/pat/d`, `:v/pat/d`) are
+  treated like the excluded range forms and produce no identity, so ranged
+  uses of a bindable command do not contribute to its "frequently used"
+  evidence.
 - A legacy `:map x :X<CR>`-style mapping that itself opens a command line is
   recorded both as the mapping use and as the command identity. `<Cmd>`-style
   mappings (which the appender emits) do not double count.

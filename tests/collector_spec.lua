@@ -56,11 +56,15 @@ local function fake_hooks(overrides)
     return vim.fn.strchars(value)
   end
 
-  function hooks.command_exists(name)
-    if type(hooks.known_commands) == "table" then
-      return hooks.known_commands[name] == true
+  function hooks.parse_command(line)
+    if type(hooks.parse_override) == "table" and hooks.parse_override[line] ~= nil then
+      return hooks.parse_override[line]
     end
-    return true
+    local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
+    if ok and type(parsed) == "table" then
+      return parsed
+    end
+    return nil
   end
 
   hooks.cmdline_value = {
@@ -239,6 +243,9 @@ h.describe("Neovim collector", function()
       end,
     }, hooks)
 
+    hooks.parse_override = {
+      ["Telescope find_files cwd=/private/project"] = { cmd = "Telescope", range = {} },
+    }
     hooks.cmdline_value = {
       cmdtype = ":",
       abort = false,
@@ -271,6 +278,7 @@ h.describe("Neovim collector", function()
 
     hooks.key_callback(":", ":")
     hooks.context_value.mode = "c"
+    hooks.parse_override = { Example = { cmd = "Example", range = {} } }
     hooks.cmdline_value = {
       cmdtype = ":",
       abort = false,
@@ -339,8 +347,8 @@ h.describe("Neovim collector", function()
 
   h.it("records canonical names for bang and alternate commands and ignores ranges", function()
     local cases = {
-      { line = "w!", expect = "command:w" },
-      { line = "e#", expect = "command:e" },
+      { line = "w!", expect = "command:write" },
+      { line = "e#", expect = "command:edit" },
       { line = "%s/foo/bar/g", expect = nil },
       { line = "'<,'>d", expect = nil },
       { line = "1,5d", expect = nil },
@@ -377,13 +385,15 @@ h.describe("Neovim collector", function()
 
   h.it("skips command modifiers and global filter forms", function()
     local cases = {
-      { line = "silent w", expect = "command:w" },
+      { line = "silent w", expect = "command:write" },
       { line = "silent! write", expect = "command:write" },
+      { line = "sil w", expect = "command:write" },
       { line = "tab split", expect = "command:split" },
       { line = "vertical resize 10", expect = "command:resize" },
-      { line = "keepjumps w", expect = "command:w" },
+      { line = "keepjumps w", expect = "command:write" },
       { line = "g/pattern/d", expect = nil },
       { line = "v/pattern/d", expect = nil },
+      { line = "g?pattern?d", expect = nil },
     }
 
     for _, case in ipairs(cases) do
@@ -413,12 +423,9 @@ h.describe("Neovim collector", function()
     end
   end)
 
-  h.it("keeps any existing command under Vim exists semantics", function()
+  h.it("keeps user-defined commands that the real parser recognizes", function()
     vim.cmd("command! -bar KeyCoachExistenceCheck")
     local hooks = fake_hooks()
-    hooks.command_exists = function(name)
-      return vim.fn.exists(":" .. name) ~= 0
-    end
     local emitted = {}
     local handle = collector.start({
       session = 20,
@@ -441,8 +448,7 @@ h.describe("Neovim collector", function()
 
   h.it("does not record an unknown command that would error as E492", function()
     local hooks = fake_hooks()
-    hooks.known_commands = { Example = true }
-    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Example" }
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Telescoop" }
     local emitted = {}
     local handle = collector.start({
       session = 16,
@@ -452,13 +458,12 @@ h.describe("Neovim collector", function()
     }, hooks)
 
     hooks.autocmds.CmdlineLeave()
-    h.eq(1, #emitted)
-    h.eq("command:Example", emitted[1].action_id)
+    h.eq(0, #emitted, "unknown commands must not enter the evidence pool")
 
-    hooks.known_commands = {}
-    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Telescoop" }
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "write" }
     hooks.autocmds.CmdlineLeave()
-    h.eq(1, #emitted, "unknown commands must not enter the evidence pool")
+    h.eq(1, #emitted)
+    h.eq("command:write", emitted[1].action_id)
 
     handle.stop()
   end)
@@ -466,6 +471,7 @@ h.describe("Neovim collector", function()
   h.it("degrades to a category count when no invoking key context exists", function()
     local hooks = fake_hooks()
     hooks.context_value.mode = "c"
+    hooks.parse_override = { Example = { cmd = "Example", range = {} } }
     hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Example" }
     local emitted = {}
     local handle = collector.start({
