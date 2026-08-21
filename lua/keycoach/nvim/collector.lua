@@ -11,8 +11,12 @@ local function safe_positive_integer(value)
     and value == math.floor(value)
 end
 
+local function content_bearing_buffer(context)
+  return context.buffer_kind == "prompt" or context.buffer_kind == "terminal"
+end
+
 local function exact_context(context)
-  if context.buffer_kind == "prompt" or context.buffer_kind == "terminal" then
+  if content_bearing_buffer(context) then
     return false
   end
 
@@ -137,6 +141,20 @@ local function neovim_hooks()
     strchars = function(value)
       return vim.fn.strchars(value)
     end,
+    parse_command = function(line)
+      local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
+      if ok and type(parsed) == "table" then
+        return parsed
+      end
+      return nil
+    end,
+    cmdline_context = function()
+      return {
+        cmdtype = vim.v.event.cmdtype,
+        abort = vim.v.event.abort == true,
+        line = vim.fn.getcmdline() or "",
+      }
+    end,
   }
 end
 
@@ -157,6 +175,7 @@ function M.start(options, hooks)
   local ordinal = 0
   local pending_keys = {}
   local pending_context
+  local last_exact_context
   local namespace = hooks.create_namespace("keycoach.collector")
   local group = hooks.create_augroup("KeyCoachCollector")
 
@@ -234,6 +253,43 @@ function M.start(options, hooks)
     flush_pending()
   end
 
+  local function collect_command()
+    if not active then
+      return
+    end
+
+    local context = hooks.context()
+    if content_bearing_buffer(context) then
+      return
+    end
+
+    local cmdline = hooks.cmdline_context()
+    if cmdline.cmdtype ~= ":" or cmdline.abort then
+      return
+    end
+
+    local parsed = hooks.parse_command(cmdline.line)
+    local name = parsed and parsed.cmd
+    if type(name) ~= "string" or name == "" then
+      return
+    end
+    if name == "global" or name == "vglobal" then
+      return
+    end
+    if parsed.range and #parsed.range > 0 then
+      return
+    end
+
+    emit_signal({
+      kind = "action",
+      action_id = "command:" .. name,
+      source = "command",
+      category = "command",
+      bindable = true,
+      cost = #name + 2,
+    }, last_exact_context or context)
+  end
+
   hooks.on_key(function(_, typed)
     if not active or type(typed) ~= "string" or typed == "" then
       return
@@ -245,6 +301,10 @@ function M.start(options, hooks)
     end
 
     local context = hooks.context()
+    if exact_context(context) then
+      last_exact_context = context
+    end
+
     local mouse = mouse_signal(translated)
     if mouse then
       flush_pending()
@@ -254,6 +314,13 @@ function M.start(options, hooks)
 
     collect_key(translated, context)
   end, namespace)
+
+  hooks.create_autocmd("CmdlineLeave", {
+    group = group,
+    callback = function()
+      collect_command()
+    end,
+  })
 
   local handle = {}
 

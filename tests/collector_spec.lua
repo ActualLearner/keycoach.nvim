@@ -56,6 +56,27 @@ local function fake_hooks(overrides)
     return vim.fn.strchars(value)
   end
 
+  function hooks.parse_command(line)
+    if type(hooks.parse_override) == "table" and hooks.parse_override[line] ~= nil then
+      return hooks.parse_override[line]
+    end
+    local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
+    if ok and type(parsed) == "table" then
+      return parsed
+    end
+    return nil
+  end
+
+  hooks.cmdline_value = {
+    cmdtype = ":",
+    abort = false,
+    line = "",
+  }
+
+  function hooks.cmdline_context()
+    return vim.deepcopy(hooks.cmdline_value)
+  end
+
   hooks.translated = {}
 
   for key, value in pairs(overrides or {}) do
@@ -210,5 +231,283 @@ h.describe("Neovim collector", function()
     end
 
     handle.stop()
+  end)
+
+  h.it("records an executed normal command identity without its arguments", function()
+    local hooks = fake_hooks()
+    local emitted = {}
+    local handle = collector.start({
+      session = 11,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.parse_override = {
+      ["Telescope find_files cwd=/private/project"] = { cmd = "Telescope", range = {} },
+    }
+    hooks.cmdline_value = {
+      cmdtype = ":",
+      abort = false,
+      line = "Telescope find_files cwd=/private/project",
+    }
+    hooks.autocmds.CmdlineLeave()
+
+    h.eq(1, #emitted)
+    local observation = emitted[1]
+    h.eq("command:Telescope", observation.action_id)
+    h.eq("command", observation.source)
+    h.eq(true, observation.bindable)
+    h.eq("normal", observation.mode)
+    h.eq(nil, observation.lhs)
+    h.eq(11, observation.session)
+    h.eq(1, observation.ordinal)
+
+    handle.stop()
+  end)
+
+  h.it("keeps the invoking mode when the live mode at CmdlineLeave is the cmdline", function()
+    local hooks = fake_hooks()
+    local emitted = {}
+    local handle = collector.start({
+      session = 14,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.key_callback(":", ":")
+    hooks.context_value.mode = "c"
+    hooks.parse_override = { Example = { cmd = "Example", range = {} } }
+    hooks.cmdline_value = {
+      cmdtype = ":",
+      abort = false,
+      line = "Example",
+    }
+    hooks.autocmds.CmdlineLeave()
+
+    h.eq(2, #emitted)
+    local command = emitted[2]
+    h.eq("command:Example", command.action_id)
+    h.eq("normal", command.mode)
+    h.eq(true, command.bindable)
+    h.eq(nil, command.lhs)
+    h.eq(14, command.session)
+    h.eq(2, command.ordinal)
+
+    handle.stop()
+  end)
+
+  h.it("ignores abandoned, non-colon, and terminal command lines", function()
+    local cases = {
+      {
+        name = "aborted",
+        context = { mode = "n", filetype = "lua", buffer_kind = "file", plugin_context = "none" },
+        cmdline = { cmdtype = ":", abort = true, line = "w" },
+      },
+      {
+        name = "search",
+        context = { mode = "n", filetype = "lua", buffer_kind = "file", plugin_context = "none" },
+        cmdline = { cmdtype = "/", abort = false, line = "secret" },
+      },
+      {
+        name = "expression",
+        context = { mode = "n", filetype = "lua", buffer_kind = "file", plugin_context = "none" },
+        cmdline = { cmdtype = "=", abort = false, line = "secret" },
+      },
+      {
+        name = "terminal buffer",
+        context = { mode = "n", filetype = "", buffer_kind = "terminal", plugin_context = "none" },
+        cmdline = { cmdtype = ":", abort = false, line = "git status" },
+      },
+      {
+        name = "prompt buffer",
+        context = { mode = "n", filetype = "", buffer_kind = "prompt", plugin_context = "none" },
+        cmdline = { cmdtype = ":", abort = false, line = "secret" },
+      },
+    }
+
+    for _, case in ipairs(cases) do
+      local hooks = fake_hooks()
+      hooks.context_value = case.context
+      hooks.cmdline_value = case.cmdline
+      local emitted = {}
+      local handle = collector.start({
+        session = 12,
+        emit = function(observation)
+          table.insert(emitted, observation)
+        end,
+      }, hooks)
+
+      hooks.autocmds.CmdlineLeave()
+      h.eq(0, #emitted, case.name .. " must not record an Observation")
+      handle.stop()
+    end
+  end)
+
+  h.it("records canonical names for bang and alternate commands and ignores ranges", function()
+    local cases = {
+      { line = "w!", expect = "command:write" },
+      { line = "e#", expect = "command:edit" },
+      { line = "%s/foo/bar/g", expect = nil },
+      { line = "'<,'>d", expect = nil },
+      { line = "1,5d", expect = nil },
+      { line = ".d", expect = nil },
+    }
+
+    for _, case in ipairs(cases) do
+      local hooks = fake_hooks()
+      hooks.cmdline_value = {
+        cmdtype = ":",
+        abort = false,
+        line = case.line,
+      }
+      local emitted = {}
+      local handle = collector.start({
+        session = 15,
+        emit = function(observation)
+          table.insert(emitted, observation)
+        end,
+      }, hooks)
+
+      hooks.autocmds.CmdlineLeave()
+
+      if case.expect then
+        h.eq(1, #emitted, case.line .. " must record one command identity")
+        h.eq(case.expect, emitted[1].action_id, case.line)
+        h.eq(nil, emitted[1].lhs, case.line)
+      else
+        h.eq(0, #emitted, case.line .. " must not record an Observation")
+      end
+      handle.stop()
+    end
+  end)
+
+  h.it("skips command modifiers and global filter forms", function()
+    local cases = {
+      { line = "silent w", expect = "command:write" },
+      { line = "silent! write", expect = "command:write" },
+      { line = "sil w", expect = "command:write" },
+      { line = "tab split", expect = "command:split" },
+      { line = "vertical resize 10", expect = "command:resize" },
+      { line = "keepjumps w", expect = "command:write" },
+      { line = "g/pattern/d", expect = nil },
+      { line = "v/pattern/d", expect = nil },
+      { line = "g?pattern?d", expect = nil },
+    }
+
+    for _, case in ipairs(cases) do
+      local hooks = fake_hooks()
+      hooks.cmdline_value = {
+        cmdtype = ":",
+        abort = false,
+        line = case.line,
+      }
+      local emitted = {}
+      local handle = collector.start({
+        session = 19,
+        emit = function(observation)
+          table.insert(emitted, observation)
+        end,
+      }, hooks)
+
+      hooks.autocmds.CmdlineLeave()
+
+      if case.expect then
+        h.eq(1, #emitted, case.line .. " must record one command identity")
+        h.eq(case.expect, emitted[1].action_id, case.line)
+      else
+        h.eq(0, #emitted, case.line .. " must not record an Observation")
+      end
+      handle.stop()
+    end
+  end)
+
+  h.it("keeps user-defined commands that the real parser recognizes", function()
+    vim.cmd("command! -bar KeyCoachExistenceCheck")
+    local hooks = fake_hooks()
+    local emitted = {}
+    local handle = collector.start({
+      session = 20,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "KeyCoachExistenceCheck" }
+    hooks.autocmds.CmdlineLeave()
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Telescoop" }
+    hooks.autocmds.CmdlineLeave()
+
+    h.eq(1, #emitted)
+    h.eq("command:KeyCoachExistenceCheck", emitted[1].action_id)
+
+    handle.stop()
+    pcall(vim.cmd, "delcommand KeyCoachExistenceCheck")
+  end)
+
+  h.it("does not record an unknown command that would error as E492", function()
+    local hooks = fake_hooks()
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Telescoop" }
+    local emitted = {}
+    local handle = collector.start({
+      session = 16,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.autocmds.CmdlineLeave()
+    h.eq(0, #emitted, "unknown commands must not enter the evidence pool")
+
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "write" }
+    hooks.autocmds.CmdlineLeave()
+    h.eq(1, #emitted)
+    h.eq("command:write", emitted[1].action_id)
+
+    handle.stop()
+  end)
+
+  h.it("degrades to a category count when no invoking key context exists", function()
+    local hooks = fake_hooks()
+    hooks.context_value.mode = "c"
+    hooks.parse_override = { Example = { cmd = "Example", range = {} } }
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Example" }
+    local emitted = {}
+    local handle = collector.start({
+      session = 17,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    hooks.autocmds.CmdlineLeave()
+    h.eq(1, #emitted)
+    h.eq("category:command", emitted[1].action_id)
+    h.eq("command_line", emitted[1].mode)
+    h.eq(false, emitted[1].bindable)
+    h.eq(nil, emitted[1].lhs)
+
+    handle.stop()
+  end)
+
+  h.it("stops observing commands when the collector is stopped", function()
+    local hooks = fake_hooks()
+    local emitted = {}
+    local handle = collector.start({
+      session = 13,
+      emit = function(observation)
+        table.insert(emitted, observation)
+      end,
+    }, hooks)
+
+    h.truthy(hooks.autocmds.CmdlineLeave)
+
+    handle.stop()
+    h.eq({}, hooks.autocmds)
+    h.eq(23, hooks.deleted_group)
+
+    hooks.cmdline_value = { cmdtype = ":", abort = false, line = "write" }
+    h.eq(0, #emitted)
   end)
 end)

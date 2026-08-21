@@ -110,6 +110,37 @@ local SNOOZE_MS = 30 * 86400000
 local DEFAULT_RETENTION_DAYS = 30
 local MIN_ADOPTION_SESSIONS = 2
 
+-- The engine stays runtime-neutral, but Neovim inventories use short mode
+-- letters while its adapter observes canonical names. Normalizing keeps
+-- aggregation keys stable across editor adapters while letting detection
+-- compare observations against the effective inventory.
+local MODE_ALIASES = {
+  normal = "n",
+  operator_pending = "o",
+  select = "s",
+  visual = "v",
+}
+
+local function normalized_mode(mode)
+  return MODE_ALIASES[mode] or mode
+end
+
+local function modes_overlap(left, right)
+  if left == right then
+    return true
+  end
+  return left == "v" and (right == "x" or right == "s")
+    or right == "v" and (left == "x" or left == "s")
+end
+
+local function mode_covers(mapping_mode, observation_mode)
+  if mapping_mode == observation_mode then
+    return true
+  end
+  return mapping_mode == "v" and observation_mode == "s"
+    or mapping_mode == "x" and observation_mode == "v"
+end
+
 local function problem(code, message, path)
   return {
     code = code,
@@ -802,7 +833,7 @@ end
 local function find_existing_mapping(inventory, aggregate)
   local matches = {}
   for _, mapping in ipairs(inventory.mappings) do
-    if mapping.mode == aggregate.mode and mapping.action_id == aggregate.action_id then
+    if mode_covers(mapping.mode, aggregate.mode) and mapping.action_id == aggregate.action_id then
       table.insert(matches, mapping)
     end
   end
@@ -883,14 +914,11 @@ end
 local function candidate_is_free(inventory, mode, lhs)
   local allowed = allowed_shared_prefix(inventory.conventions, lhs)
   for _, mapping in ipairs(inventory.mappings) do
-    local modes_overlap = mapping.mode == mode
-      or mapping.mode == "v" and (mode == "x" or mode == "s")
-      or mode == "v" and (mapping.mode == "x" or mapping.mode == "s")
     local keys_overlap = mapping.lhs == lhs
       or mapping.lhs:sub(1, #lhs) == lhs
       or lhs:sub(1, #mapping.lhs) == mapping.lhs
       or common_prefix_length(mapping.lhs, lhs) > allowed
-    if modes_overlap and keys_overlap then
+    if modes_overlap(mapping.mode, mode) and keys_overlap then
       return false
     end
   end
@@ -1104,6 +1132,9 @@ function M.advance(previous, cycle)
       return nil,
         problem("time_regression", "Observation time cannot exceed cycle time", path .. ".at_ms")
     end
+
+    observation = copy(observation)
+    observation.mode = normalized_mode(observation.mode)
 
     local fingerprint = observation_fingerprint(observation)
     local seen = checkpoint.seen_observations[observation.id]
