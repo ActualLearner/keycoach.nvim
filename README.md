@@ -4,17 +4,18 @@
 [![Release](https://img.shields.io/github/v/tag/ActualLearner/keycoach.nvim?label=release)](https://github.com/ActualLearner/keycoach.nvim/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Local-first workflow coaching for experienced Neovim users.
+Local-first workflow coaching for Neovim.
 
 ![KeyCoach demo: quiet observation, recommendation card, one-keystroke apply](assets/demo.gif)
 
-Keep using `:Telescope find_files` without noticing it costs eleven keystrokes? KeyCoach watches
-privacy-safe editor actions, finds recurring inefficient patterns, and recommends an existing
-mapping or a conflict-free mapping you can add to your own config — applied with one keystroke,
-written as a readable `vim.keymap.set` line in your config.
+Type the same long commands day after day — `:Telescope find_files`, `:b#`, `:nohl` — and never
+build the muscle memory for a faster way? KeyCoach quietly watches how you edit, notices what you
+repeat, and suggests a keymapping that fits your setup: one you already have but keep forgetting,
+or a conflict-free new one, applied with a single keystroke.
 
-It stays quiet while you edit and shows only patterns
-with evidence across multiple sessions.
+Everything runs on your machine. KeyCoach never sees inserted text, search or command arguments,
+or file contents — only that you pressed keys in normal mode or ran a command. It stays quiet
+while you work and shows only patterns with evidence across multiple sessions.
 
 ## What it does
 
@@ -111,6 +112,9 @@ Passing `enabled = true` in `setup()` is also explicit consent.
 | `:KeyCoachMappings` | Open the selected mappings file |
 | `:KeyCoachData` | Inspect, export, or manage local data |
 | `:KeyCoachClear` | Delete locally stored observations (keeps consent) |
+
+Run `:checkhealth keycoach` to verify your setup — data directory permissions, mappings
+file writability, and consent status.
 
 The dashboard is pull-first: KeyCoach does not interrupt active editing with
 recommendation popups.

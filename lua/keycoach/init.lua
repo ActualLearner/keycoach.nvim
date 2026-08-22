@@ -818,6 +818,7 @@ function M.setup(options)
     or (options.state_path and vim.fn.fnamemodify(options.state_path, ":h"))
     or (vim.fn.stdpath("data") .. "/keycoach")
   state.data_dir = data_dir
+  vim.g.keycoach_data_dir = data_dir
   state.settings_path = options.settings_path or (data_dir .. "/settings.json")
   state.state_path = options.state_path or (data_dir .. "/checkpoint.json")
   state.mapping_file = options.mapping_file
