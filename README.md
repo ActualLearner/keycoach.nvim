@@ -1,10 +1,19 @@
 # keycoach.nvim
 
+[![CI](https://github.com/ActualLearner/keycoach.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/ActualLearner/keycoach.nvim/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/tag/ActualLearner/keycoach.nvim?label=release)](https://github.com/ActualLearner/keycoach.nvim/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Local-first workflow coaching for experienced Neovim users.
 
-KeyCoach observes privacy-safe editor actions, finds recurring inefficient
-patterns, and recommends an existing mapping or a conflict-free mapping you can
-add to your own config. It stays quiet while you edit and shows only patterns
+![KeyCoach demo: quiet observation, recommendation card, one-keystroke apply](assets/demo.gif)
+
+Keep using `:Telescope find_files` without noticing it costs eleven keystrokes? KeyCoach watches
+privacy-safe editor actions, finds recurring inefficient patterns, and recommends an existing
+mapping or a conflict-free mapping you can add to your own config — applied with one keystroke,
+written as a readable `vim.keymap.set` line in your config.
+
+It stays quiet while you edit and shows only patterns
 with evidence across multiple sessions.
 
 ## What it does

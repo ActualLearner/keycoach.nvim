@@ -253,6 +253,39 @@ h.describe("wired plugin smoke", function()
     end
   )
 
+  h.it("applies a Mapping Candidate while its own dashboard is open", function()
+    local state_path = temporary_path("smoke/open-apply/state.json")
+    local mapping_file = temporary_path("smoke/open-apply/mappings.lua")
+    local hooks = fake_hooks()
+    local collector = wired_collector(hooks)
+    local keycoach = fresh_setup(hooks, {
+      state_path = state_path,
+      mapping_file = mapping_file,
+      collector = collector,
+    })
+    keycoach.enable()
+
+    for _, observation in ipairs(command_observations("command:Example", "normal")) do
+      collector.captured.options.emit(observation)
+    end
+
+    local transition, flush_problem = keycoach.flush()
+    h.eq(nil, flush_problem)
+    h.eq(1, #transition.recommendations)
+    local recommendation = transition.recommendations[1]
+
+    local window = keycoach.open()
+    h.truthy(window)
+
+    local result, apply_problem = keycoach.apply(recommendation, { confirmed = true })
+    h.eq(nil, apply_problem)
+    h.eq(true, result.applied)
+    local appended = read_file(mapping_file)
+    h.truthy(appended:find('vim.keymap.set("n",', 1, true))
+
+    vim.api.nvim_win_close(window, true)
+  end)
+
   h.it("recommends the Existing Mapping already present in the real inventory", function()
     vim.keymap.set("n", "<leader>ex", "<Cmd>Example<CR>", { desc = "Open example" })
 

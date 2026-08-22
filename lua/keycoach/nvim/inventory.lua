@@ -192,15 +192,16 @@ function M.snapshot(options)
   table.sort(mappings, mapping_sort)
   local revision_parts = { leader, localleader }
   for _, mapping in ipairs(mappings) do
-    table.insert(
-      revision_parts,
-      table.concat({
-        mapping.mode,
-        mapping.lhs,
-        mapping.action_id,
-        tostring(mapping.buffer),
-      }, "|")
-    )
+    if not mapping.buffer then
+      table.insert(
+        revision_parts,
+        table.concat({
+          mapping.mode,
+          mapping.lhs,
+          mapping.action_id,
+        }, "|")
+      )
+    end
   end
 
   return {
