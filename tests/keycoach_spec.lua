@@ -182,6 +182,51 @@ h.describe("KeyCoach public interface", function()
     h.eq(true, resolved.bindable)
   end)
 
+  h.it("warns at setup when the mappings file cannot work", function()
+    package.loaded["keycoach"] = nil
+    local notifications = {}
+    local real_notify = vim.notify
+    vim.notify = function(msg, level, opts)
+      table.insert(notifications, { message = tostring(msg), level = level })
+      return real_notify(msg, level, opts)
+    end
+
+    require("keycoach").setup({ enabled = false, mapping_file = "/tmp" })
+    vim.notify = real_notify
+
+    local warned = false
+    for _, notification in ipairs(notifications) do
+      if
+        notification.level == vim.log.levels.WARN
+        and notification.message:find(".lua", 1, true)
+        and notification.message:find("Applying recommendations will fail", 1, true)
+      then
+        warned = true
+      end
+    end
+    h.truthy(warned, "a warning naming the unusable mappings file is shown")
+  end)
+
+  h.it("stays quiet at setup when the mappings file is usable", function()
+    package.loaded["keycoach"] = nil
+    local notifications = {}
+    local real_notify = vim.notify
+    vim.notify = function(msg, level, opts)
+      table.insert(notifications, { message = tostring(msg), level = level })
+      return real_notify(msg, level, opts)
+    end
+
+    local good = temporary_path("validation-ok") .. "/mappings.lua"
+    require("keycoach").setup({ enabled = false, mapping_file = good })
+    vim.notify = real_notify
+
+    for _, notification in ipairs(notifications) do
+      if notification.level == vim.log.levels.WARN then
+        h.falsy(notification.message:find("mappings file", 1, true))
+      end
+    end
+  end)
+
   h.it("registers its user commands during setup", function()
     package.loaded["keycoach"] = nil
 
@@ -196,6 +241,8 @@ h.describe("KeyCoach public interface", function()
       "KeyCoachPause",
       "KeyCoachResume",
       "KeyCoachStatus",
+      "KeyCoachUndo",
+      "KeyCoachReport",
       "KeyCoachData",
     }) do
       h.truthy(commands[name], "missing user command " .. name)

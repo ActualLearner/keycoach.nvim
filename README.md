@@ -110,6 +110,8 @@ Passing `enabled = true` in `setup()` is also explicit consent.
 | `:KeyCoachResume` | Resume observation |
 | `:KeyCoachStatus` | Show tracking and recommendation status |
 | `:KeyCoachMappings` | Open the selected mappings file |
+| `:KeyCoachUndo [lhs]` | Comment out a KeyCoach-added mapping (default: the last one) |
+| `:KeyCoachReport` | Weekly digest of observed actions, adopted mappings, exclusions |
 | `:KeyCoachData` | Inspect, export, or manage local data |
 | `:KeyCoachClear` | Delete locally stored observations (keeps consent) |
 

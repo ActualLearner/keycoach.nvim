@@ -4,6 +4,7 @@ local appender = require("keycoach.appender")
 local dashboard = require("keycoach.dashboard")
 local format = require("keycoach.format")
 local inventory_module = require("keycoach.nvim.inventory")
+local report = require("keycoach.report")
 
 local uv = vim.uv or vim.loop
 
@@ -59,6 +60,37 @@ local function now_ms()
     now = math.max(now, state.checkpoint.last_now_ms)
   end
   return now
+end
+
+local function warn_mapping_file_problems(path)
+  if type(path) ~= "string" or path == "" then
+    return
+  end
+
+  local problems = {}
+  if path:sub(-4) ~= ".lua" then
+    table.insert(problems, "does not end in .lua so mappings cannot be appended to it")
+  end
+  if vim.fn.isdirectory(path) == 1 then
+    table.insert(problems, "is a directory")
+  else
+    local parent = vim.fn.fnamemodify(path, ":h")
+    if vim.fn.isdirectory(parent) == 1 and vim.fn.filewritable(parent) ~= 2 then
+      table.insert(problems, "directory is not writable")
+    end
+  end
+
+  if #problems > 0 then
+    vim.notify(
+      "KeyCoach mappings file ("
+        .. path
+        .. ") "
+        .. table.concat(problems, "; ")
+        .. ". Applying recommendations will fail until this is fixed.",
+      vim.log.levels.WARN,
+      { title = "KeyCoach" }
+    )
+  end
 end
 
 local function load_settings()
@@ -453,6 +485,34 @@ local function register_commands()
       callback = notify_status,
       description = "Show KeyCoach tracking status",
     },
+    KeyCoachUndo = {
+      callback = function(options)
+        local result, undo_problem = M.undo(options.args)
+        if undo_problem then
+          vim.notify(
+            "KeyCoach: " .. tostring(undo_problem.message or undo_problem.code),
+            vim.log.levels.WARN,
+            { title = "KeyCoach" }
+          )
+          return
+        end
+        vim.notify(
+          "Commented out:\n"
+            .. result.line
+            .. "\nRestart Neovim or re-source your config to release the key.",
+          vim.log.levels.INFO,
+          { title = "KeyCoach" }
+        )
+      end,
+      description = "Comment out a KeyCoach-added mapping (default: the last one)",
+      nargs = "?",
+    },
+    KeyCoachReport = {
+      callback = function()
+        return M.report()
+      end,
+      description = "Show a weekly report of observed actions and adopted mappings",
+    },
     KeyCoachData = {
       callback = function()
         return M.data()
@@ -462,10 +522,14 @@ local function register_commands()
   }
 
   for name, command in pairs(commands) do
-    vim.api.nvim_create_user_command(name, command.callback, {
+    local registration = {
       desc = command.description,
       force = true,
-    })
+    }
+    if command.nargs then
+      registration.nargs = command.nargs
+    end
+    vim.api.nvim_create_user_command(name, command.callback, registration)
   end
 end
 
@@ -865,6 +929,8 @@ function M.setup(options)
     state.mapping_file = settings.mapping_file
   end
 
+  warn_mapping_file_problems(state.mapping_file)
+
   register_commands()
   setup_cycle_triggers()
 
@@ -997,6 +1063,17 @@ function M.open_mappings()
     return nil
   end
   vim.cmd("edit " .. vim.fn.fnameescape(state.mapping_file))
+end
+
+function M.undo(lhs)
+  if type(state.mapping_file) ~= "string" or state.mapping_file == "" then
+    return nil, { code = "no_mapping_file", message = "No KeyCoach mappings file configured." }
+  end
+  return appender.remove(state.mapping_file, lhs)
+end
+
+function M.report()
+  return report.open(report.lines(state.checkpoint, now_ms()))
 end
 
 function M.clear(options)
