@@ -4,6 +4,9 @@
 # (seeded through the real engine+store pipeline), so the dashboard shows
 # genuine recommendations. The :Telescope stub lets the recording capture
 # a real command invocation on camera.
+#
+# After rendering, slow playback to ~0.75x without re-encoding:
+#   python3 assets/scale-gif-delays.py assets/demo.gif assets/demo.gif
 
 Output assets/demo.gif
 Set Shell bash
