@@ -405,4 +405,70 @@ function M.append(path, candidate, options)
   }, nil
 end
 
+function M.remove(path, lhs)
+  if type(path) ~= "string" or path == "" or path:find("\0", 1, true) then
+    return nil, problem("unsafe_target", "mappings path must name a .lua file", path)
+  end
+
+  local contents, read_problem = read_existing(path)
+  if read_problem then
+    return nil, read_problem
+  end
+  if contents == "" then
+    return nil, problem("not_found", "no KeyCoach mapping found to undo", path)
+  end
+
+  local lines = {}
+  for line in (contents .. "\n"):gmatch("(.-)\n") do
+    table.insert(lines, line)
+  end
+
+  local quoted_lhs = type(lhs) == "string" and lhs ~= "" and quote(lhs) or nil
+  local matched_index
+  for index = #lines, 1, -1 do
+    local line = lines[index]
+    local is_ours = line:find("^%s*vim%.keymap%.set%(", 1, false) ~= nil
+      and line:find("KeyCoach:", 1, true) ~= nil
+      and (quoted_lhs == nil or line:find(quoted_lhs, 1, true) ~= nil)
+    if is_ours then
+      matched_index = index
+      break
+    end
+  end
+
+  if not matched_index then
+    return nil, problem("not_found", "no KeyCoach mapping found to undo", path)
+  end
+
+  local removed = lines[matched_index]
+  local commented = "-- [keycoach undone] " .. removed
+  lines[matched_index] = commented
+
+  local parent = vim.fn.fnamemodify(path, ":h")
+  if vim.fn.isdirectory(parent) == 0 then
+    return nil, problem("remove_failed", "mappings directory disappeared", path)
+  end
+  local file, open_message = io.open(path, "wb")
+  if not file then
+    return nil, problem("remove_failed", open_message or "could not rewrite mappings file", path)
+  end
+  local wrote, write_message = file:write(table.concat(lines, "\n") .. "\n")
+  local closed, close_message = file:close()
+  if not wrote or not closed then
+    return nil,
+      problem(
+        "remove_failed",
+        write_message or close_message or "could not rewrite mappings file",
+        path
+      )
+  end
+
+  return {
+    line = removed,
+    commented = commented,
+    bytes_written = #table.concat(lines, "\n"),
+  },
+    nil
+end
+
 return M

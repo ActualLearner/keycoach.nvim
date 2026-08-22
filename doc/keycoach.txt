@@ -112,6 +112,15 @@ After setup, tracking starts immediately. Open the dashboard any time with
 
 :KeyCoachMappings Open the configured mappings file in the current window.
 
+:KeyCoachUndo [lhs]
+                Comment out the most recent KeyCoach-added mapping, or the
+                one for [lhs] if given. The line stays visible in your
+                mappings file as a comment; restart or re-source your
+                config to release the key.
+
+:KeyCoachReport  Show a weekly report of observed actions, adopted
+                 mappings, and exclusions.
+
 :KeyCoachData     Inspect, export, restore an exclusion, or delete local
                   data (see |keycoach-data|).
 

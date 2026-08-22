@@ -127,4 +127,52 @@ h.describe("mapping appender", function()
       h.eq(0, vim.fn.filereadable(path))
     end
   end)
+
+  h.it("comments out its own mapping on remove and leaves user lines alone", function()
+    local appender = require("keycoach.appender")
+    local path = temporary_path("") .. "/mappings.lua"
+    local result, append_problem = appender.append(path, {
+      mode = "n",
+      lhs = "<leader>t",
+      rhs = "<Cmd>Telescope<CR>",
+      opts = { desc = "KeyCoach: command:Telescope" },
+    }, {
+      expected_revision = "inventory-1",
+      current_inventory = function()
+        return { revision = "inventory-1", complete = true, mappings = {} }
+      end,
+    })
+    h.eq(nil, append_problem)
+
+    -- a user's own keymap.set for the same lhs must never be touched
+    local file = io.open(path, "a")
+    file:write('vim.keymap.set("n", "<leader>t", "<Cmd>Mine<CR>")\n')
+    file:close()
+
+    local undone, undo_problem = appender.remove(path, "<leader>t")
+    h.eq(nil, undo_problem)
+    h.truthy(undone.line:find("<Cmd>Telescope<CR>", 1, true) ~= nil, "removes the KeyCoach line")
+    h.truthy(undone.commented:sub(1, 21) == "-- [keycoach undone] ", "commented out, not deleted")
+
+    local contents = read_file(path)
+    h.truthy(contents:find("-- [keycoach undone] vim.keymap.set", 1, true) ~= nil)
+    h.truthy(contents:find("<Cmd>Mine<CR>", 1, true) ~= nil, "user line survives")
+
+    -- the commented line is never matched again; only the user's line remains
+    local again_result, again_problem = appender.remove(path)
+    h.eq(nil, again_result)
+    h.eq("not_found", again_problem.code)
+  end)
+
+  h.it("returns not_found when there is nothing KeyCoach-added to undo", function()
+    local appender = require("keycoach.appender")
+    local path = temporary_path("") .. "/mappings.lua"
+    local file = io.open(path, "w")
+    file:write('vim.keymap.set("n", "<leader>mine", "<Cmd>Mine<CR>")\n')
+    file:close()
+
+    local result, problem = appender.remove(path)
+    h.eq(nil, result)
+    h.eq("not_found", problem.code)
+  end)
 end)
