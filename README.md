@@ -35,6 +35,9 @@ runtime dependencies.
 
 All analysis happens locally. KeyCoach never persists inserted text, command or
 search arguments, clipboard data, file contents, paths, or project names.
+Nothing is ever sent anywhere — there is no account, no cloud, no telemetry
+endpoint. Tracking is on by default with a one-time disclosure notice;
+`:KeyCoachPause` stops it and `:KeyCoachClear` deletes all stored data.
 
 Exact keys are eligible for observation only in Normal, Visual, Select, and
 Operator-pending modes. Content-bearing modes are reduced immediately to safe
@@ -56,11 +59,10 @@ distribution or plugin manager.
 { "ActualLearner/keycoach.nvim" }
 ```
 
-That is the whole setup. KeyCoach starts inert; run `:KeyCoach` and the
-three-step walkthrough explains the capture boundary, asks where mappings
-should be stored (prefilled with
-`stdpath("config")/lua/keycoach_mappings.lua`), and starts tracking only
-after you consent.
+That is the whole setup. Tracking starts by default; a one-time notice
+tells you exactly what is observed and that nothing ever leaves your
+machine. `:KeyCoachPause` stops it at any time, `:KeyCoachClear` deletes
+everything stored, and `:checkhealth keycoach` verifies your setup.
 
 ### packer.nvim
 
@@ -75,8 +77,7 @@ Plug 'ActualLearner/keycoach.nvim'
 ```
 
 Pass options only if you want to override defaults (see Configuration).
-Passing `enabled = true` in `setup()` skips the walkthrough as explicit
-consent.
+Pass `enabled = false` to start disabled.
 
 Accepted mappings are appended as readable `vim.keymap.set` statements to
 the chosen file, and KeyCoach loads that file itself: an applied mapping is
@@ -88,7 +89,7 @@ your config by hand.
 | Command | Purpose |
 | --- | --- |
 | `:KeyCoach` | Open ranked recommendations |
-| `:KeyCoachEnable` | Complete setup and enable tracking |
+| `:KeyCoachEnable` | Turn tracking on (clears a stored refusal) |
 | `:KeyCoachPause` | Pause observation immediately |
 | `:KeyCoachResume` | Resume observation |
 | `:KeyCoachStatus` | Show tracking and recommendation status |
@@ -123,10 +124,10 @@ require("lualine").setup({
 
 ```lua
 require("keycoach").setup({
-  -- Asked during onboarding when omitted; this is the default suggestion.
+  -- Default suggestion; chosen during onboarding when omitted.
   mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
 
-  -- `nil` uses saved consent or starts first-run onboarding.
+  -- `nil` tracks by default (honoring a stored refusal); false disables.
   enabled = nil,
 
   -- Detailed normalized observations expire after this many days.

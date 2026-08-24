@@ -253,14 +253,14 @@ h.describe("KeyCoach public interface", function()
     package.loaded["keycoach"] = nil
 
     local keycoach = require("keycoach")
-    keycoach.setup({ enabled = false })
+    keycoach.setup({ enabled = true })
     local window = keycoach.open()
 
     h.truthy(vim.api.nvim_win_is_valid(window))
     local buffer = vim.api.nvim_win_get_buf(window)
     local lines = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
     h.eq("KeyCoach", lines[1])
-    h.eq("Tracking disabled", lines[3])
+    h.eq("Tracking active", lines[3])
     h.eq("No recommendations yet", lines[5])
 
     vim.api.nvim_win_close(window, true)
@@ -463,12 +463,11 @@ h.describe("KeyCoach public interface", function()
     h.eq(mapping_file, keycoach.inspect().settings.mapping_file)
   end)
 
-  h.it("runs onboarding without consent and starts tracking on completion", function()
+  h.it("tracks by default and defaults the mappings file without setup options", function()
     package.loaded["keycoach"] = nil
 
-    local state_path = temporary_path("onboarding/state.json")
+    local state_path = temporary_path("default-on/state.json")
     local collector = stub_collector()
-    local ran
     local keycoach = require("keycoach")
     keycoach.setup({
       state_path = state_path,
@@ -477,20 +476,43 @@ h.describe("KeyCoach public interface", function()
       now_ms = function()
         return 2000
       end,
-      onboarding = {
-        run = function(options)
-          ran = options
-          options.on_complete("/tmp/keycoach_mappings.lua")
-        end,
-      },
     })
 
-    h.eq("pending", keycoach.status().tracking)
-    h.eq(false, keycoach.enable())
     h.eq("tracking", keycoach.status().tracking)
-    h.truthy(ran)
-    h.eq("/tmp/keycoach_mappings.lua", keycoach.inspect().settings.mapping_file)
+    h.eq(true, keycoach.inspect().settings.consent)
+    h.truthy(keycoach.inspect().settings.mapping_file:find("keycoach_mappings%.lua$"))
     h.eq(1, collector.captured.session)
+  end)
+
+  h.it("honors a stored consent refusal until the user re-enables", function()
+    package.loaded["keycoach"] = nil
+
+    local state_path = temporary_path("refusal/state.json")
+    local settings_path = temporary_path("") .. "/settings.json"
+    vim.fn.mkdir(vim.fn.fnamemodify(settings_path, ":h"), "p")
+    local settings_file = io.open(settings_path, "w")
+    settings_file:write('{"consent":false}')
+    settings_file:close()
+
+    local collector = stub_collector()
+    local keycoach = require("keycoach")
+    keycoach.setup({
+      state_path = state_path,
+      settings_path = settings_path,
+      inventory = empty_inventory(),
+      collector = collector,
+      now_ms = function()
+        return 2000
+      end,
+    })
+
+    h.eq("disabled", keycoach.status().tracking)
+    h.eq(nil, collector.captured.session)
+
+    keycoach.enable()
+    h.eq("tracking", keycoach.status().tracking)
+    h.truthy(collector.captured.session ~= nil)
+    h.eq(true, keycoach.inspect().settings.consent)
   end)
 
   h.it("records acknowledged feedback for existing mappings and native actions", function()

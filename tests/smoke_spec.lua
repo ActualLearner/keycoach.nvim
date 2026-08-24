@@ -108,14 +108,6 @@ local function wired_collector(hooks)
   }
 end
 
-local function onboarding_stub()
-  return {
-    run = function(options)
-      options.on_complete(options.preset_mapping_file or options.default_mapping_file)
-    end,
-  }
-end
-
 local function command_observations(action_id, mode)
   local observations = {}
   local index = 0
@@ -152,7 +144,6 @@ local function fresh_setup(hooks, options)
     mapping_file = options.mapping_file,
     inventory = require("keycoach.nvim.inventory"),
     collector = options.collector or wired_collector(hooks),
-    onboarding = onboarding_stub(),
     now_ms = function()
       return 4000
     end,
@@ -162,14 +153,12 @@ end
 
 h.describe("wired plugin smoke", function()
   h.it(
-    "installs fresh, onboards, and records an executed command through the real collector",
+    "installs fresh, tracks by default, and records an executed command through the real collector",
     function()
       local state_path = temporary_path("smoke/state.json")
       local hooks = fake_hooks()
       local keycoach = fresh_setup(hooks, { state_path = state_path })
 
-      h.eq("pending", keycoach.status().tracking)
-      h.eq(false, keycoach.enable())
       h.eq("tracking", keycoach.status().tracking)
       h.eq(true, keycoach.inspect().settings.consent)
 

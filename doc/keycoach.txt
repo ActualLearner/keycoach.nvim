@@ -55,9 +55,8 @@ packer.nvim: >
 vim-plug: >
   Plug 'ActualLearner/keycoach.nvim'
 <
-A bare spec is enough: the plugin auto-setups with defaults and stays
-inert until you run :KeyCoach and consent. Pass options to setup() only
-to override defaults.
+A bare spec is enough: the plugin auto-setups with defaults and starts
+tracking immediately. Pass options to setup() only to override defaults.
 
 KeyCoach loads the mappings file itself. An applied mapping is active
 immediately and on every later start; you never wire the file into your
@@ -66,35 +65,29 @@ config by hand.
 ==============================================================================
 2. Setup and first run                              *keycoach-setup*
 
-On the first run, before any observation starts, KeyCoach walks through
-three steps in a sequence of floating windows:
+Tracking starts by default the moment KeyCoach is set up. On a fresh
+install a one-time notice discloses what is observed and states that
+nothing ever leaves the machine (see |keycoach-privacy|):
 
-  1. The capture boundary is explained (see |keycoach-privacy|).
-  2. You choose the Lua mappings file accepted candidates may be appended
-     to.
-  3. You give explicit consent to begin tracking.
+  KeyCoach now observes keys and commands locally to suggest mappings.
+  Nothing ever leaves this machine. :KeyCoachPause pauses it,
+  :h keycoach-privacy has details.
 
-Nothing is persisted until the final consent. An abandoned walkthrough
-restarts cleanly from step 1. The walkthrough runs only while KeyCoach is
-in the pending setup state, which happens when setup() runs without
-enabled = true and no consent record exists yet. While pending, KeyCoach
-observes nothing and shows a single setup hint after startup. Passing
-enabled = false disables tracking and skips that hint entirely.
+The mappings file defaults to
+stdpath("config") .. "/lua/keycoach_mappings.lua" and is loaded by
+KeyCoach itself; you never wire it into your config by hand.
 
-Passing enabled = true to setup() is equivalent explicit consent and skips
-the walkthrough. Without consent KeyCoach observes nothing.
-
-After setup, tracking starts immediately. Open the dashboard any time with
-:KeyCoach (see |keycoach-dashboard|).
+To opt out, pass enabled = false to setup() or run :KeyCoachPause.
+A stored consent refusal (settings.json with "consent": false) keeps
+KeyCoach disabled until :KeyCoachEnable. All locally stored data can be
+deleted at any time with :KeyCoachClear or :KeyCoachData.
 
 ==============================================================================
 3. Commands                                         *keycoach-commands*
 
-:KeyCoach         Open ranked recommendations, or start first-run setup when
-                  KeyCoach has not been configured yet.
+:KeyCoach         Open ranked recommendations.
 
-:KeyCoachEnable   Complete setup and enable tracking. Runs the walkthrough
-                  when consent is missing.
+:KeyCoachEnable   Turn tracking on (also clears a stored consent refusal).
 
 :KeyCoachPause    Pause observation immediately. Existing evidence and
                   recommendations are kept.
@@ -176,7 +169,6 @@ nagging you.
 require("keycoach").statusline() returns a compact status string:
 
   KC off      Tracking disabled.
-  KC setup    KeyCoach installed but not set up.
   KC on       Tracking, no ready recommendations.
   KC <n>      Tracking, n ready recommendations.
   KC paused   Tracking paused.
@@ -241,14 +233,12 @@ Local state lives beneath stdpath("data")/keycoach/:
 
 require("keycoach").setup({ ... })
 
-mapping_file  (string, required to apply generated mappings) Path of the
-              Lua file accepted candidates are appended to. Defaults to
-              stdpath("config") .. "/lua/keycoach_mappings.lua" when chosen
-              in the walkthrough.
+mapping_file  (string) Path of the Lua file accepted candidates are
+              appended to. Defaults to
+              stdpath("config") .. "/lua/keycoach_mappings.lua".
 
-enabled       (boolean|nil, default nil) nil uses saved consent or starts
-              first-run onboarding; true is explicit consent and skips the
-              walkthrough; false disables tracking regardless of consent.
+enabled       (boolean|nil, default nil) nil tracks by default (honoring
+              a stored consent refusal); false disables tracking.
 
 retention_days  (number, default 30) Detailed normalized observations
               expire after this many days.
