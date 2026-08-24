@@ -55,20 +55,14 @@ packer.nvim: >
 vim-plug: >
   Plug 'ActualLearner/keycoach.nvim'
 <
-Then set it up in your init.lua: >
-  require("keycoach").setup({
-    mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
-  })
-<
+A bare spec is enough: the plugin auto-setups with defaults and stays
+inert until you run :KeyCoach and consent. Pass options to setup() only
+to override defaults.
 
-Make sure Neovim loads the selected mappings file. This safe pattern also
-works before the first mapping has been added: >
-  local keycoach_mappings = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua"
-  if vim.uv.fs_stat(keycoach_mappings) then
-    dofile(keycoach_mappings)
-  end
+KeyCoach loads the mappings file itself. An applied mapping is active
+immediately and on every later start; you never wire the file into your
+config by hand.
 <
-
 ==============================================================================
 2. Setup and first run                              *keycoach-setup*
 

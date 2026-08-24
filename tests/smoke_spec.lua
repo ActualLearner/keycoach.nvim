@@ -250,6 +250,8 @@ h.describe("wired plugin smoke", function()
       h.eq(nil, after_problem)
       h.eq(0, #after_apply.recommendations)
       h.eq("KC on", keycoach.statusline())
+
+      pcall(vim.keymap.del, "n", recommendation.mapping.lhs)
     end
   )
 
@@ -284,6 +286,7 @@ h.describe("wired plugin smoke", function()
     h.truthy(appended:find('vim.keymap.set("n",', 1, true))
 
     vim.api.nvim_win_close(window, true)
+    pcall(vim.keymap.del, "n", recommendation.mapping.lhs)
   end)
 
   h.it("recommends the Existing Mapping already present in the real inventory", function()
@@ -309,5 +312,7 @@ h.describe("wired plugin smoke", function()
     h.eq("existing_mapping", recommendation.kind)
     h.eq("<leader>ex", recommendation.mapping.lhs)
     h.eq("command:Example", recommendation.action_id)
+
+    pcall(vim.keymap.del, "n", "<leader>ex")
   end)
 end)
