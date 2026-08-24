@@ -44,7 +44,6 @@ for the complete boundary.
 ## Requirements
 
 - Neovim 0.10 or newer
-- A user-selected Lua file where accepted mappings may be appended
 
 KeyCoach uses public Neovim APIs and has no dependency on a specific
 distribution or plugin manager.
@@ -54,25 +53,19 @@ distribution or plugin manager.
 ### lazy.nvim and LazyVim
 
 ```lua
-{
-  "ActualLearner/keycoach.nvim",
-  opts = {
-    mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
-  },
-}
+{ "ActualLearner/keycoach.nvim" }
 ```
+
+That is the whole setup. KeyCoach starts inert; run `:KeyCoach` and the
+three-step walkthrough explains the capture boundary, asks where mappings
+should be stored (prefilled with
+`stdpath("config")/lua/keycoach_mappings.lua`), and starts tracking only
+after you consent.
 
 ### packer.nvim
 
 ```lua
-use({
-  "ActualLearner/keycoach.nvim",
-  config = function()
-    require("keycoach").setup({
-      mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
-    })
-  end,
-})
+use({ "ActualLearner/keycoach.nvim" })
 ```
 
 ### vim-plug
@@ -81,24 +74,14 @@ use({
 Plug 'ActualLearner/keycoach.nvim'
 ```
 
-```lua
-require("keycoach").setup({
-  mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
-})
-```
+Pass options only if you want to override defaults (see Configuration).
+Passing `enabled = true` in `setup()` skips the walkthrough as explicit
+consent.
 
-Make sure Neovim loads the selected mappings file. This safe pattern also works
-before the first mapping has been added:
-
-```lua
-local keycoach_mappings = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua"
-if vim.uv.fs_stat(keycoach_mappings) then
-  dofile(keycoach_mappings)
-end
-```
-
-The first run explains the capture boundary and asks before tracking starts.
-Passing `enabled = true` in `setup()` is also explicit consent.
+Accepted mappings are appended as readable `vim.keymap.set` statements to
+the chosen file, and KeyCoach loads that file itself: an applied mapping is
+active immediately and on every later start. You never wire the file into
+your config by hand.
 
 ## Usage
 
@@ -140,7 +123,7 @@ require("lualine").setup({
 
 ```lua
 require("keycoach").setup({
-  -- Required before a generated mapping can be applied.
+  -- Asked during onboarding when omitted; this is the default suggestion.
   mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
 
   -- `nil` uses saved consent or starts first-run onboarding.

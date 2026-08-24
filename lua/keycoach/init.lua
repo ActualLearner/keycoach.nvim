@@ -13,7 +13,6 @@ local M = {}
 local active_timer
 local collector_emit
 local start_tracking
-local apply_hint_shown = false
 
 local DEFAULT_RETENTION_DAYS = 30
 local DEFAULT_SESSION_IDLE_MINUTES = 30
@@ -60,6 +59,23 @@ local function now_ms()
     now = math.max(now, state.checkpoint.last_now_ms)
   end
   return now
+end
+
+local function load_mapping_file()
+  if type(state.mapping_file) ~= "string" or state.mapping_file == "" then
+    return
+  end
+  if vim.fn.filereadable(state.mapping_file) == 0 then
+    return
+  end
+  local ok, load_error = pcall(dofile, state.mapping_file)
+  if not ok then
+    vim.notify(
+      "KeyCoach could not load " .. state.mapping_file .. ": " .. tostring(load_error),
+      vim.log.levels.WARN,
+      { title = "KeyCoach" }
+    )
+  end
 end
 
 local function warn_mapping_file_problems(path)
@@ -567,20 +583,6 @@ local function keymap_set_line(candidate)
   )
 end
 
-local function require_name(path)
-  local config = vim.fn.stdpath("config")
-  local prefix = config .. "/lua/"
-  local expanded = vim.fn.expand(path)
-  if expanded:sub(1, #prefix) ~= prefix then
-    return nil
-  end
-  local name = expanded:sub(#prefix + 1):gsub("%.lua$", ""):gsub("/", ".")
-  if name == "" then
-    return nil
-  end
-  return name
-end
-
 local function appender_inventory(snapshot)
   return {
     revision = snapshot.revision,
@@ -651,15 +653,8 @@ local function apply_mapping_candidate(recommendation, options)
 
   record_feedback("accepted", recommendation.pattern_id, target.lhs)
   M.flush(true)
-  local message = "Appended " .. result.line
-  if not apply_hint_shown then
-    apply_hint_shown = true
-    local module = require_name(state.mapping_file)
-    local load_snippet = module and ("require(" .. vim.inspect(module) .. ")")
-      or ("dofile(" .. vim.inspect(vim.fn.expand(state.mapping_file)) .. ")")
-    message = message .. "  Add " .. load_snippet .. " to your config to activate it."
-  end
-  vim.notify(message, vim.log.levels.INFO, { title = "KeyCoach" })
+  load_mapping_file()
+  vim.notify("Appended and active: " .. result.line, vim.log.levels.INFO, { title = "KeyCoach" })
   return { applied = true, line = result.line }, nil
 end
 
@@ -930,6 +925,9 @@ function M.setup(options)
   end
 
   warn_mapping_file_problems(state.mapping_file)
+  if state.consent == true then
+    load_mapping_file()
+  end
 
   register_commands()
   setup_cycle_triggers()

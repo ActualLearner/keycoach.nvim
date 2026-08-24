@@ -386,6 +386,8 @@ h.describe("KeyCoach public interface", function()
     h.eq(nil, after_problem)
     h.eq(0, #after_apply.recommendations)
     h.eq("KC on", keycoach.statusline())
+
+    pcall(vim.keymap.del, "n", recommendation.mapping.lhs)
   end)
 
   h.it("regenerates a mapping candidate when its key is taken at apply time", function()
