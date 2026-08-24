@@ -124,14 +124,14 @@ local function save_settings()
   })
 end
 
-local function schedule_setup_hint()
+local function schedule_disclosure_notice()
   vim.schedule(function()
     vim.notify(
-      "KeyCoach is installed but not set up. Run :KeyCoach to begin.",
+      "KeyCoach now observes keys and commands locally to suggest mappings. "
+        .. "Nothing ever leaves this machine. "
+        .. ":KeyCoachPause pauses it, :h keycoach-privacy has details.",
       vim.log.levels.INFO,
-      {
-        title = "KeyCoach",
-      }
+      { title = "KeyCoach" }
     )
   end)
 end
@@ -431,29 +431,6 @@ end
 
 local function notify_status()
   vim.notify(M.statusline(), vim.log.levels.INFO, { title = "KeyCoach" })
-end
-
-local function run_onboarding()
-  local onboarding_module = state.options.onboarding or require("keycoach.nvim.onboarding")
-  onboarding_module.run({
-    default_mapping_file = state.options.mapping_file
-      or (vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua"),
-    preset_mapping_file = state.options.mapping_file,
-    data_directory = state.data_dir,
-    on_complete = function(mapping_file)
-      state.consent = true
-      state.mapping_file = mapping_file
-      save_settings()
-      state.tracking = "tracking"
-      start_tracking()
-      notify_status()
-      vim.notify(
-        "KeyCoach is tracking. Open :KeyCoach any time.",
-        vim.log.levels.INFO,
-        { title = "KeyCoach" }
-      )
-    end,
-  })
 end
 
 local function register_commands()
@@ -917,11 +894,15 @@ function M.setup(options)
   state.active_model = nil
 
   local settings = load_settings()
+  local stored_refusal = settings.consent == false
   if type(settings.consent) == "boolean" then
     state.consent = settings.consent
   end
   if type(settings.mapping_file) == "string" and not state.mapping_file then
     state.mapping_file = settings.mapping_file
+  end
+  if type(state.mapping_file) ~= "string" or state.mapping_file == "" then
+    state.mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua"
   end
 
   warn_mapping_file_problems(state.mapping_file)
@@ -932,19 +913,19 @@ function M.setup(options)
   register_commands()
   setup_cycle_triggers()
 
-  if options.enabled == true then
-    state.consent = true
-    state.tracking = "tracking"
-    save_settings()
-    start_tracking()
-  elseif options.enabled == false then
+  if options.enabled == false or stored_refusal then
+    state.consent = false
     state.tracking = "disabled"
-  elseif state.consent then
-    state.tracking = "tracking"
-    start_tracking()
-  else
-    state.tracking = "pending"
-    schedule_setup_hint()
+    return M
+  end
+
+  local fresh_install = settings.consent == nil
+  state.consent = true
+  state.tracking = "tracking"
+  save_settings()
+  start_tracking()
+  if fresh_install then
+    schedule_disclosure_notice()
   end
 
   return M
@@ -965,10 +946,6 @@ function M.statusline()
 
   if state.tracking == "paused" then
     return "KC paused"
-  end
-
-  if state.tracking == "pending" then
-    return "KC setup"
   end
 
   return "KC off"
@@ -993,15 +970,8 @@ function M.resume()
 end
 
 function M.enable()
-  if state.tracking == "tracking" then
-    return true
-  end
-
-  if not state.consent then
-    run_onboarding()
-    return false
-  end
-
+  state.consent = true
+  save_settings()
   state.tracking = "tracking"
   start_tracking()
   notify_status()
@@ -1009,8 +979,12 @@ function M.enable()
 end
 
 function M.open()
-  if state.tracking == "pending" then
-    run_onboarding()
+  if state.tracking ~= "tracking" and state.tracking ~= "paused" then
+    vim.notify(
+      "KeyCoach is paused or disabled. :KeyCoachEnable to turn it on.",
+      vim.log.levels.INFO,
+      { title = "KeyCoach" }
+    )
     return nil
   end
 

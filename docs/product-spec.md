@@ -20,7 +20,7 @@ without mappings.
 
 ## Product loop
 
-1. After one-time consent, observe editor activity silently.
+1. Observe editor activity locally by default, after a one-time disclosure notice.
 2. Normalize activity immediately and discard content-bearing input.
 3. Accumulate evidence across Sessions.
 4. Rank only high-confidence Insights.
@@ -53,20 +53,31 @@ data, file contents, paths, project names, or raw content-bearing input.
 Terminal and prompt-like buffers, where secrets are most likely to be typed,
 are excluded from observation beyond mode-level action counts.
 
-## Onboarding
+## Disclosure and tracking default
 
-The first run walks through three steps before any observation starts:
+KeyCoach is local-only (nothing ever transmits), so the first run shows a
+one-time disclosure notice instead of a consent gate — what is observed,
+that nothing leaves the machine, and how to pause. Tracking then starts
+immediately with a default mappings file
+(`stdpath("config")/lua/keycoach_mappings.lua`).
 
-1. Explain the capture boundary above and that all analysis stays local.
-2. Ask for the Lua mappings file that accepted candidates may be appended to.
-3. Ask for explicit consent to begin tracking.
+Opt-outs, in order of permanence:
 
-Passing `enabled = true` in `setup()` is equivalent explicit consent and
-skips the walkthrough. Without consent, KeyCoach stays fully inert.
+1. `:KeyCoachPause` / `:KeyCoachResume` — immediate, keeps evidence.
+2. `:KeyCoachClear` / `:KeyCoachData` — delete stored observations.
+3. `enabled = false` in `setup()` — disables tracking.
+4. A stored consent refusal (`settings.json` with `"consent": false`)
+   keeps KeyCoach disabled until `:KeyCoachEnable`.
+
+This aligns with the category norm (local observation is disclosed and
+pausable, not gated) while keeping the local-only guarantee as the
+load-bearing trust commitment. See
+docs/research/competitive-analysis.md for the evidence.
 
 ## Interaction
 
-- Tracking is enabled only after one-time consent.
+- Tracking is on by default after a one-time disclosure notice; a stored
+  consent refusal keeps it off.
 - Tracking is otherwise passive and can be paused or resumed immediately.
 - The dashboard is opened explicitly and shows ranked Recommendations.
 - No popup interrupts active editing.

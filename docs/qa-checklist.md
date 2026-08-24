@@ -19,14 +19,14 @@ manual checks in a real Neovim and record evidence on the release ticket
 
 ## Spec-derived verification
 
-### Onboarding and consent
+### Disclosure and tracking defaults
 
 | Check | Automated evidence | Manual step |
 | --- | --- | --- |
-| Fresh install is inert and hints | `keycoach_spec` "runs onboarding…"; `smoke_spec` "installs fresh…" | Install from the README snippet; expect one notify: "KeyCoach is installed but not set up. Run :KeyCoach to begin." Statusline shows `KC setup`. |
-| `enabled = true` is explicit consent | `keycoach_spec` pause/resume tests | `setup({ enabled = true })` starts tracking without the walkthrough. |
-| Walkthrough persists nothing until consent | `onboarding.lua` flow (design `onboarding-ux.md`) | Abandon each of the three steps with `q`/`<Esc>`; data dir stays empty and the hint reappears next start. |
-| Three-step walkthrough | `smoke_spec` onboarding path | `:KeyCoach` shows boundary → mappings file → consent. `y` starts tracking (`KC on` + notify); `q` leaves it inert. |
+| Fresh install tracks with a one-time disclosure notice | `smoke_spec` "installs fresh, tracks by default…"; `keycoach_spec` "tracks by default…" | Install from the README snippet; expect one notify disclosing local observation, with `KC on` in the statusline. |
+| `enabled = false` disables | `keycoach_spec` "reports disabled tracking…" | `setup({ enabled = false })` shows `KC off` and observes nothing. |
+| Stored consent refusal is honored | `keycoach_spec` "honors a stored consent refusal…" | With `settings.json` containing `"consent": false`, KeyCoach stays disabled until `:KeyCoachEnable`. |
+| Data deletion stays available | `keycoach_spec` data cases | `:KeyCoachClear` deletes all observations; `:KeyCoachPause` stops observation immediately. |
 
 ### Capture boundary
 
@@ -72,7 +72,7 @@ Weak or ambiguous evidence must stay silent (`engine_spec` silence cases).
 | Local-only, deterministic, no telemetry | ADR 0001; `engine_spec` determinism | `stdpath("data")/keycoach/` holds everything; no network calls. |
 | 30-day detail expiry keeps aggregates | `engine_spec` retention case | After the window, `details` prune while aggregate occurrences remain. |
 | Inspect / export / delete | `keycoach_spec` data cases | `:KeyCoachData` inspect/export/delete round-trip; `:KeyCoachClear` keeps consent and the mappings file. |
-| Statusline contract | `keycoach_spec` statusline cases | `KC off` / `KC setup` / `KC on` / `KC paused` / `KC <n>` reflect real state. |
+| Statusline contract | `keycoach_spec` statusline cases | `KC off` / `KC on` / `KC paused` / `KC <n>` reflect real state. |
 | All commands registered | `keycoach_spec` command registration | `:KeyCoach`, `:KeyCoachEnable`, `:KeyCoachPause`, `:KeyCoachResume`, `:KeyCoachStatus`, `:KeyCoachMappings`, `:KeyCoachData`, `:KeyCoachClear` all work. |
 
 ### Distribution
