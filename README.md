@@ -31,18 +31,32 @@ while you work and shows only patterns with evidence across multiple sessions.
 There are no tutorials, exercises, accounts, cloud services, or required
 runtime dependencies.
 
+## How it compares
+
+| | KeyCoach | hardtime.nvim | which-key.nvim | precognition.nvim |
+| --- | --- | --- | --- | --- |
+| Watches what you actually use | ✅ across sessions | ✅ key repeats | ❌ | ❌ |
+| Suggests new mappings for your habits | ✅ conflict-free | ❌ (blocks + hints) | ❌ (browses existing) | ❌ (shows motions live) |
+| Reminds you of mappings you forgot | ✅ | ❌ | ❌ | ❌ |
+| Persists evidence over time | ✅ 30-day window | ✅ local log | ❌ | ❌ |
+| Works offline, fully local | ✅ | ✅ | ✅ | ✅ |
+| Never blocks your keys | ✅ pull-first dashboard | ⚠️ blocks repeats | ✅ | ✅ |
+
 ## Privacy
 
 All analysis happens locally. KeyCoach never persists inserted text, command or
 search arguments, clipboard data, file contents, paths, or project names.
 Nothing is ever sent anywhere — there is no account, no cloud, no telemetry
-endpoint. Tracking is on by default with a one-time disclosure notice;
-`:KeyCoachPause` stops it and `:KeyCoachClear` deletes all stored data.
+endpoint.
 
 Exact keys are eligible for observation only in Normal, Visual, Select, and
 Operator-pending modes. Content-bearing modes are reduced immediately to safe
 action categories and counts. See [the product specification](docs/product-spec.md)
 for the complete boundary.
+
+Everything is stored in one folder, `stdpath("data")/keycoach/` (two JSON
+files). `:KeyCoachClear` deletes all of it in one command; `:KeyCoachPause`
+stops observation immediately.
 
 ## Requirements
 
@@ -59,10 +73,10 @@ distribution or plugin manager.
 { "ActualLearner/keycoach.nvim" }
 ```
 
-That is the whole setup. Tracking starts by default; a one-time notice
-tells you exactly what is observed and that nothing ever leaves your
-machine. `:KeyCoachPause` stops it at any time, `:KeyCoachClear` deletes
-everything stored, and `:checkhealth keycoach` verifies your setup.
+That is the whole setup. Tracking starts by default — what KeyCoach
+observes is described in [Privacy](#privacy) below. `:KeyCoachPause`
+stops it at any time, `:KeyCoachClear` deletes everything stored, and
+`:checkhealth keycoach` verifies your setup.
 
 ### packer.nvim
 
@@ -122,6 +136,20 @@ require("lualine").setup({
 
 ## Configuration
 
+<details>
+<summary>Full default options</summary>
+
+```lua
+require("keycoach").setup({
+  mapping_file = vim.fn.stdpath("config") .. "/lua/keycoach_mappings.lua",
+  enabled = nil,
+  retention_days = 30,
+  session_idle_minutes = 30,
+})
+```
+
+</details>
+
 ```lua
 require("keycoach").setup({
   -- Default suggestion; chosen during onboarding when omitted.
@@ -140,6 +168,35 @@ require("keycoach").setup({
 
 Accepted mappings are appended as readable `vim.keymap.set(...)` statements.
 KeyCoach never rewrites or removes existing configuration.
+
+## FAQ
+
+**Is this a keylogger?**
+No. KeyCoach counts what you press in normal-mode editing — it never records
+insert-mode text, search or command arguments, clipboard contents, or file
+contents, in that order and by design. Counts are aggregated per action; the
+order and context of your typing are not stored.
+
+**Does it send anything anywhere?**
+No. There is no network code in the plugin. Everything lives in two JSON
+files under `stdpath("data")/keycoach/`.
+
+**How do I turn it off?**
+`:KeyCoachPause` stops observation immediately (evidence is kept);
+`enabled = false` in `setup()` disables it permanently;
+`:KeyCoachClear` deletes everything already stored.
+
+**Why did a recommendation disappear after I applied it?**
+That is the adoption loop working: once you start using the new mapping
+instead of the old way, the card retires itself. If you go back to the old
+way, it can return.
+
+**Where do applied mappings go?**
+Into one readable Lua file you chose during setup (by default
+`stdpath("config")/lua/keycoach_mappings.lua`), as plain
+`vim.keymap.set(...)` lines. KeyCoach loads that file itself — no config
+wiring needed. `:KeyCoachUndo` comments out the last one if you change
+your mind.
 
 ## Data controls
 
