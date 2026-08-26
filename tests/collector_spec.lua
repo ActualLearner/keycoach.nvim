@@ -1,94 +1,11 @@
 local collector = require("keycoach.nvim.collector")
 local h = require("tests.harness")
 
-local function fake_hooks(overrides)
-  local hooks = {
-    autocmds = {},
-    context_value = {
-      mode = "n",
-      filetype = "lua",
-      buffer_kind = "file",
-      plugin_context = "none",
-    },
-    now = 1000,
-  }
-
-  function hooks.create_namespace()
-    return 17
-  end
-
-  function hooks.on_key(callback)
-    hooks.key_callback = callback
-  end
-
-  function hooks.create_augroup()
-    return 23
-  end
-
-  function hooks.create_autocmd(events, options)
-    if type(events) == "string" then
-      events = { events }
-    end
-    for _, event in ipairs(events) do
-      hooks.autocmds[event] = options.callback
-    end
-  end
-
-  function hooks.delete_augroup(group)
-    hooks.deleted_group = group
-    hooks.autocmds = {}
-  end
-
-  function hooks.context()
-    return vim.deepcopy(hooks.context_value)
-  end
-
-  function hooks.now_ms()
-    return hooks.now
-  end
-
-  function hooks.keytrans(key)
-    table.insert(hooks.translated, key)
-    return key
-  end
-
-  function hooks.strchars(value)
-    return vim.fn.strchars(value)
-  end
-
-  function hooks.parse_command(line)
-    if type(hooks.parse_override) == "table" and hooks.parse_override[line] ~= nil then
-      return hooks.parse_override[line]
-    end
-    local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
-    if ok and type(parsed) == "table" then
-      return parsed
-    end
-    return nil
-  end
-
-  hooks.cmdline_value = {
-    cmdtype = ":",
-    abort = false,
-    line = "",
-  }
-
-  function hooks.cmdline_context()
-    return vim.deepcopy(hooks.cmdline_value)
-  end
-
-  hooks.translated = {}
-
-  for key, value in pairs(overrides or {}) do
-    hooks[key] = value
-  end
-
-  return hooks
-end
+local fake_hooks = h.fake_hooks
 
 h.describe("Neovim collector", function()
   h.it("captures typed keys and removes every hook when stopped", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local emitted = {}
     local handle = collector.start({
       session = 8,
@@ -133,7 +50,7 @@ h.describe("Neovim collector", function()
   end)
 
   h.it("resolves a complete mapping lhs before capturing individual keys", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local emitted = {}
     local candidates = {}
     local handle = collector.start({
@@ -191,7 +108,7 @@ h.describe("Neovim collector", function()
   end)
 
   h.it("normalizes mouse tokens and never persists content-bearing keys", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local emitted = {}
     local handle = collector.start({
       session = 10,
@@ -234,7 +151,7 @@ h.describe("Neovim collector", function()
   end)
 
   h.it("records an executed normal command identity without its arguments", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local emitted = {}
     local handle = collector.start({
       session = 11,
@@ -267,7 +184,7 @@ h.describe("Neovim collector", function()
   end)
 
   h.it("keeps the invoking mode when the live mode at CmdlineLeave is the cmdline", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local emitted = {}
     local handle = collector.start({
       session = 14,
@@ -328,7 +245,7 @@ h.describe("Neovim collector", function()
     }
 
     for _, case in ipairs(cases) do
-      local hooks = fake_hooks()
+      local hooks = h.fake_hooks()
       hooks.context_value = case.context
       hooks.cmdline_value = case.cmdline
       local emitted = {}
@@ -356,7 +273,7 @@ h.describe("Neovim collector", function()
     }
 
     for _, case in ipairs(cases) do
-      local hooks = fake_hooks()
+      local hooks = h.fake_hooks()
       hooks.cmdline_value = {
         cmdtype = ":",
         abort = false,
@@ -397,7 +314,7 @@ h.describe("Neovim collector", function()
     }
 
     for _, case in ipairs(cases) do
-      local hooks = fake_hooks()
+      local hooks = h.fake_hooks()
       hooks.cmdline_value = {
         cmdtype = ":",
         abort = false,
@@ -425,7 +342,7 @@ h.describe("Neovim collector", function()
 
   h.it("keeps user-defined commands that the real parser recognizes", function()
     vim.cmd("command! -bar KeyCoachExistenceCheck")
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local emitted = {}
     local handle = collector.start({
       session = 20,
@@ -447,7 +364,7 @@ h.describe("Neovim collector", function()
   end)
 
   h.it("does not record an unknown command that would error as E492", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Telescoop" }
     local emitted = {}
     local handle = collector.start({
@@ -469,7 +386,7 @@ h.describe("Neovim collector", function()
   end)
 
   h.it("degrades to a category count when no invoking key context exists", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     hooks.context_value.mode = "c"
     hooks.parse_override = { Example = { cmd = "Example", range = {} } }
     hooks.cmdline_value = { cmdtype = ":", abort = false, line = "Example" }
@@ -492,7 +409,7 @@ h.describe("Neovim collector", function()
   end)
 
   h.it("stops observing commands when the collector is stopped", function()
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local emitted = {}
     local handle = collector.start({
       session = 13,

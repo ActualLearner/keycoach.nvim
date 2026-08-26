@@ -1025,7 +1025,25 @@ function M.undo(lhs)
   if type(state.mapping_file) ~= "string" or state.mapping_file == "" then
     return nil, { code = "no_mapping_file", message = "No KeyCoach mappings file configured." }
   end
-  return appender.remove(state.mapping_file, lhs)
+  local result, remove_problem = appender.remove(state.mapping_file, lhs)
+  if remove_problem then
+    return nil, remove_problem
+  end
+
+  if type(lhs) == "string" and lhs ~= "" and type(state.checkpoint) == "table" then
+    for pattern_id, entry in pairs(state.checkpoint.accepted or {}) do
+      if entry.lhs == lhs then
+        record_feedback("rejected_key", pattern_id, lhs)
+        state.checkpoint.accepted[pattern_id] = nil
+        break
+      end
+    end
+    if state.tracking == "tracking" or state.tracking == "paused" then
+      M.flush(true)
+    end
+  end
+
+  return result, nil
 end
 
 function M.report()

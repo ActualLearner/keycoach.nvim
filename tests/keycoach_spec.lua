@@ -390,6 +390,48 @@ h.describe("KeyCoach public interface", function()
     pcall(vim.keymap.del, "n", recommendation.mapping.lhs)
   end)
 
+  h.it("records a rejected key when an applied mapping is undone", function()
+    package.loaded["keycoach"] = nil
+
+    local state_path = temporary_path("undo-feedback/state.json")
+    local mapping_file = temporary_path("undo-feedback/mappings.lua")
+    local collector = stub_collector()
+    local keycoach = require("keycoach")
+    keycoach.setup({
+      enabled = true,
+      state_path = state_path,
+      mapping_file = mapping_file,
+      inventory = empty_inventory(),
+      collector = collector,
+      now_ms = function()
+        return 2000
+      end,
+    })
+
+    for _, observation in ipairs(observations_for("command:Example")) do
+      collector.captured.emit(observation)
+    end
+    local transition, flush_problem = keycoach.flush()
+    h.eq(nil, flush_problem)
+    local recommendation = transition.recommendations[1]
+    local result, apply_problem = keycoach.apply(recommendation, { confirmed = true })
+    h.eq(nil, apply_problem)
+
+    local undone, undo_problem = keycoach.undo(recommendation.mapping.lhs)
+    h.eq(nil, undo_problem)
+    h.truthy(undone.commented:find("keycoach undone", 1, true))
+
+    local after, after_problem = keycoach.flush(true)
+    h.eq(nil, after_problem)
+    h.eq(1, #after.recommendations)
+    h.falsy(
+      after.recommendations[1].mapping.lhs == recommendation.mapping.lhs,
+      "the undone key must not be re-proposed"
+    )
+
+    pcall(vim.keymap.del, "n", recommendation.mapping.lhs)
+  end)
+
   h.it("regenerates a mapping candidate when its key is taken at apply time", function()
     package.loaded["keycoach"] = nil
 
