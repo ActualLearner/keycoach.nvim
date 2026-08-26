@@ -44,6 +44,89 @@ function M.matches(pattern, actual, message)
   end
 end
 
+function M.fake_hooks(overrides)
+  local hooks = {
+    autocmds = {},
+    context_value = {
+      mode = "n",
+      filetype = "lua",
+      buffer_kind = "file",
+      plugin_context = "none",
+    },
+    cmdline_value = {
+      cmdtype = ":",
+      abort = false,
+      line = "",
+    },
+    now = 1000,
+    translated = {},
+  }
+
+  function hooks.create_namespace()
+    return 17
+  end
+
+  function hooks.on_key(callback)
+    hooks.key_callback = callback
+  end
+
+  function hooks.create_augroup()
+    return 23
+  end
+
+  function hooks.create_autocmd(events, options)
+    if type(events) == "string" then
+      events = { events }
+    end
+    for _, event in ipairs(events) do
+      hooks.autocmds[event] = options.callback
+    end
+  end
+
+  function hooks.delete_augroup(group)
+    hooks.deleted_group = group
+    hooks.autocmds = {}
+  end
+
+  function hooks.context()
+    return vim.deepcopy(hooks.context_value)
+  end
+
+  function hooks.now_ms()
+    return hooks.now
+  end
+
+  function hooks.keytrans(key)
+    table.insert(hooks.translated, key)
+    return key
+  end
+
+  function hooks.strchars(value)
+    return vim.fn.strchars(value)
+  end
+
+  function hooks.parse_command(line)
+    if type(hooks.parse_override) == "table" and hooks.parse_override[line] ~= nil then
+      return hooks.parse_override[line]
+    end
+    local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
+    if ok and type(parsed) == "table" then
+      return parsed
+    end
+    return nil
+  end
+
+  function hooks.cmdline_context()
+    return vim.deepcopy(hooks.cmdline_value)
+  end
+
+  for key, value in pairs(overrides or {}) do
+    hooks[key] = value
+  end
+
+  return hooks
+end
+
 function M.run()
   local passed = 0
   local failed = 0

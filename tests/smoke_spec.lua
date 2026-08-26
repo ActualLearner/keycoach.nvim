@@ -14,89 +14,8 @@ local function read_file(path)
   return contents
 end
 
-local function fake_hooks(overrides)
-  local hooks = {
-    autocmds = {},
-    context_value = {
-      mode = "n",
-      filetype = "lua",
-      buffer_kind = "file",
-      plugin_context = "none",
-    },
-    cmdline_value = {
-      cmdtype = ":",
-      abort = false,
-      line = "",
-    },
-  }
+local fake_hooks = h.fake_hooks
 
-  function hooks.create_namespace()
-    return 17
-  end
-
-  function hooks.on_key(callback)
-    hooks.key_callback = callback
-  end
-
-  function hooks.create_augroup()
-    return 23
-  end
-
-  function hooks.create_autocmd(events, options)
-    if type(events) == "string" then
-      events = { events }
-    end
-    for _, event in ipairs(events) do
-      hooks.autocmds[event] = options.callback
-    end
-  end
-
-  function hooks.delete_augroup(group)
-    hooks.deleted_group = group
-    hooks.autocmds = {}
-  end
-
-  function hooks.context()
-    return vim.deepcopy(hooks.context_value)
-  end
-
-  function hooks.now_ms()
-    return hooks.now or 1000
-  end
-
-  function hooks.keytrans(key)
-    return key
-  end
-
-  function hooks.strchars(value)
-    return vim.fn.strchars(value)
-  end
-
-  function hooks.parse_command(line)
-    if type(hooks.parse_override) == "table" and hooks.parse_override[line] ~= nil then
-      return hooks.parse_override[line]
-    end
-    local ok, parsed = pcall(vim.api.nvim_parse_cmd, line, {})
-    if ok and type(parsed) == "table" then
-      return parsed
-    end
-    return nil
-  end
-
-  function hooks.cmdline_context()
-    return vim.deepcopy(hooks.cmdline_value)
-  end
-
-  for key, value in pairs(overrides or {}) do
-    hooks[key] = value
-  end
-
-  return hooks
-end
-
--- Wraps the real collector with scripted hooks and captures the options
--- init.lua passes, so tests can drive command/editor signals and read the
--- live emit callback.
 local function wired_collector(hooks)
   local captured = {}
   return {
@@ -156,7 +75,7 @@ h.describe("wired plugin smoke", function()
     "installs fresh, tracks by default, and records an executed command through the real collector",
     function()
       local state_path = temporary_path("smoke/state.json")
-      local hooks = fake_hooks()
+      local hooks = h.fake_hooks()
       local keycoach = fresh_setup(hooks, { state_path = state_path })
 
       h.eq("tracking", keycoach.status().tracking)
@@ -196,7 +115,7 @@ h.describe("wired plugin smoke", function()
     function()
       local state_path = temporary_path("smoke/apply/state.json")
       local mapping_file = temporary_path("smoke/apply/mappings.lua")
-      local hooks = fake_hooks()
+      local hooks = h.fake_hooks()
       local collector = wired_collector(hooks)
       local keycoach = fresh_setup(hooks, {
         state_path = state_path,
@@ -247,7 +166,7 @@ h.describe("wired plugin smoke", function()
   h.it("applies a Mapping Candidate while its own dashboard is open", function()
     local state_path = temporary_path("smoke/open-apply/state.json")
     local mapping_file = temporary_path("smoke/open-apply/mappings.lua")
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local collector = wired_collector(hooks)
     local keycoach = fresh_setup(hooks, {
       state_path = state_path,
@@ -282,7 +201,7 @@ h.describe("wired plugin smoke", function()
     vim.keymap.set("n", "<leader>ex", "<Cmd>Example<CR>", { desc = "Open example" })
 
     local state_path = temporary_path("smoke/existing/state.json")
-    local hooks = fake_hooks()
+    local hooks = h.fake_hooks()
     local collector = wired_collector(hooks)
     local keycoach = fresh_setup(hooks, {
       state_path = state_path,
