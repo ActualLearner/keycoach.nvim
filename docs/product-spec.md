@@ -20,7 +20,7 @@ without mappings.
 
 ## Product loop
 
-1. Observe editor activity locally by default, after a one-time disclosure notice.
+1. Observe editor activity locally by default, disclosed in the README and help doc.
 2. Normalize activity immediately and discard content-bearing input.
 3. Accumulate evidence across Sessions.
 4. Rank only high-confidence Insights.
@@ -55,11 +55,12 @@ are excluded from observation beyond mode-level action counts.
 
 ## Disclosure and tracking default
 
-KeyCoach is local-only (nothing ever transmits), so the first run shows a
-one-time disclosure notice instead of a consent gate — what is observed,
-that nothing leaves the machine, and how to pause. Tracking then starts
-immediately with a default mappings file
-(`stdpath("config")/lua/keycoach_mappings.lua`).
+KeyCoach is local-only (nothing ever transmits), so there is no consent
+gate and no first-run prompt — the capture boundary is disclosed in the
+README and help doc, tracking starts immediately, and pause/delete
+commands are one call away. The mappings file defaults to
+(`stdpath("config")/lua/keycoach_mappings.lua`). This matches the
+category norm: local observation is disclosed and pausable, not gated.
 
 Opt-outs, in order of permanence:
 
@@ -76,7 +77,7 @@ docs/research/competitive-analysis.md for the evidence.
 
 ## Interaction
 
-- Tracking is on by default after a one-time disclosure notice; a stored
+- Tracking is on by default; a stored
   consent refusal keeps it off.
 - Tracking is otherwise passive and can be paused or resumed immediately.
 - The dashboard is opened explicitly and shows ranked Recommendations.

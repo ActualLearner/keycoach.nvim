@@ -124,18 +124,6 @@ local function save_settings()
   })
 end
 
-local function schedule_disclosure_notice()
-  vim.schedule(function()
-    vim.notify(
-      "KeyCoach now observes keys and commands locally to suggest mappings. "
-        .. "Nothing ever leaves this machine. "
-        .. ":KeyCoachPause pauses it, :h keycoach-privacy has details.",
-      vim.log.levels.INFO,
-      { title = "KeyCoach" }
-    )
-  end)
-end
-
 local function current_session()
   local checkpoint_session = state.checkpoint and state.checkpoint.last_session or 0
   if
@@ -924,10 +912,6 @@ function M.setup(options)
   state.tracking = "tracking"
   save_settings()
   start_tracking()
-  if fresh_install then
-    schedule_disclosure_notice()
-  end
-
   return M
 end
 

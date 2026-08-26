@@ -23,7 +23,7 @@ manual checks in a real Neovim and record evidence on the release ticket
 
 | Check | Automated evidence | Manual step |
 | --- | --- | --- |
-| Fresh install tracks with a one-time disclosure notice | `smoke_spec` "installs fresh, tracks by default…"; `keycoach_spec` "tracks by default…" | Install from the README snippet; expect one notify disclosing local observation, with `KC on` in the statusline. |
+| Fresh install tracks immediately, no prompts | `smoke_spec` "installs fresh, tracks by default…"; `keycoach_spec` "tracks by default…" | Install from the README snippet; statusline shows `KC on` with no first-run popups. |
 | `enabled = false` disables | `keycoach_spec` "reports disabled tracking…" | `setup({ enabled = false })` shows `KC off` and observes nothing. |
 | Stored consent refusal is honored | `keycoach_spec` "honors a stored consent refusal…" | With `settings.json` containing `"consent": false`, KeyCoach stays disabled until `:KeyCoachEnable`. |
 | Data deletion stays available | `keycoach_spec` data cases | `:KeyCoachClear` deletes all observations; `:KeyCoachPause` stops observation immediately. |

@@ -65,15 +65,9 @@ config by hand.
 ==============================================================================
 2. Setup and first run                              *keycoach-setup*
 
-Tracking starts by default the moment KeyCoach is set up. On a fresh
-install a one-time notice discloses what is observed and states that
-nothing ever leaves the machine (see |keycoach-privacy|):
-
-  KeyCoach now observes keys and commands locally to suggest mappings.
-  Nothing ever leaves this machine. :KeyCoachPause pauses it,
-  :h keycoach-privacy has details.
-
-The mappings file defaults to
+Tracking starts by default the moment KeyCoach is set up. KeyCoach
+observes keys and commands locally to suggest mappings; nothing ever
+leaves the machine (see |keycoach-privacy|). The mappings file defaults to
 stdpath("config") .. "/lua/keycoach_mappings.lua" and is loaded by
 KeyCoach itself; you never wire it into your config by hand.
 
